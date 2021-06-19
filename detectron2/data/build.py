@@ -288,6 +288,7 @@ def build_batch_data_loader(
             batch_sampler=None,
             collate_fn=operator.itemgetter(0),  # don't batch, but yield individual elements
             worker_init_fn=worker_init_reset_seed,
+            pin_memory = True
         )  # yield individual mapped dict
         return AspectRatioGroupedDataset(data_loader, batch_size)
     else:
@@ -300,6 +301,7 @@ def build_batch_data_loader(
             batch_sampler=batch_sampler,
             collate_fn=trivial_batch_collator,
             worker_init_fn=worker_init_reset_seed,
+            pin_memory = True
         )
 
 
@@ -404,7 +406,7 @@ def _test_loader_from_config(cfg, dataset_name, mapper=None):
     )
     if mapper is None:
         mapper = DatasetMapper(cfg, False)
-    return {"dataset": dataset, "mapper": mapper, "num_workers": cfg.DATALOADER.NUM_WORKERS, "total_batch_size": cfg.SOLVER.IMS_PER_BATCH * 2}
+    return {"dataset": dataset, "mapper": mapper, "num_workers": cfg.DATALOADER.NUM_WORKERS, "total_batch_size": cfg.SOLVER.IMS_PER_BATCH}
 
 
 @configurable(from_config=_test_loader_from_config)
@@ -448,6 +450,7 @@ def build_detection_test_loader(dataset, *, mapper, num_workers=0, total_batch_s
         shuffle = False,
         num_workers=num_workers,
         collate_fn=trivial_batch_collator,
+        pin_memory=True
     )
     return data_loader
 
