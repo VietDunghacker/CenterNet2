@@ -441,14 +441,12 @@ def build_detection_test_loader(dataset, *, mapper, num_workers=0, total_batch_s
         dataset = DatasetFromList(dataset, copy=False)
     if mapper is not None:
         dataset = MapDataset(dataset, mapper)
-    sampler = InferenceSampler(len(dataset))
-    # Always use 1 image per worker during inference since this is the
-    # standard when reporting inference time in papers.
-    batch_sampler = torch.utils.data.sampler.BatchSampler(sampler, total_batch_size, drop_last=False)
     data_loader = torch.utils.data.DataLoader(
         dataset,
+        batch_size = total_batch_size,
+        drop_last = False,
+        shuffle = False,
         num_workers=num_workers,
-        batch_sampler=batch_sampler,
         collate_fn=trivial_batch_collator,
     )
     return data_loader
