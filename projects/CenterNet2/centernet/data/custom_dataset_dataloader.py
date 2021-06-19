@@ -33,7 +33,7 @@ def build_custom_train_loader(cfg, mapper=None):
     different samplers
     """
     source_aware = cfg.DATALOADER.SOURCE_AWARE
-    if source_aware:
+    if True:
         dataset_dicts = get_detection_dataset_dicts_with_source(
             cfg.DATASETS.TRAIN,
             filter_empty=cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS,

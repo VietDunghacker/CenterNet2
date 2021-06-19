@@ -1,0 +1,48 @@
+_BASE_: "Base-CenterNet2.yaml"
+MODEL:
+  BACKBONE:
+    NAME: "build_res2net_bifpn_backbone"
+  BIFPN:
+    NUM_BIFPN: 7
+    OUT_CHANNELS: 288
+  WEIGHTS: "/gdrive/My Drive/data/center.pth"
+  RESNETS:
+    DEPTH: 101
+    WIDTH_PER_GROUP: 26
+    DEFORM_ON_PER_STAGE: [False, False, True, True] # on Res4, Res5
+    DEFORM_MODULATED: True
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD: [58.395, 57.12, 57.375]
+  CENTERNET:
+    NUM_CLASSES: 18
+    USE_DEFORMABLE: True
+  ROI_HEADS:
+    NUM_CLASSES: 18
+    IN_FEATURES: ["p3", "p4"]
+    SCORE_THRESH_TEST: 0.5
+  ROI_BOX_HEAD:
+    CAT_FREQ_PATH: "/gdrive/My Drive/data/cat_info.json"
+    FED_LOSS_NUM_CAT: 6
+    USE_SIGMOID_CE: True
+    USE_FED_LOSS: True
+TEST:
+  EVAL_PERIOD: 1000
+  DETECTIONS_PER_IMAGE: 100
+SOLVER:
+  MAX_ITER: 100000
+  CHECKPOINT_PERIOD: 1000
+  LR_SCHEDULER_NAME: "WarmupCosineLR"
+  BASE_LR: 0.0032
+  IMS_PER_BATCH: 3
+  WARMUP_ITERS: 500
+DATALOADER:
+  NUM_WORKERS: 4
+  SAMPLER_TRAIN: "ClassAwareSampler"
+INPUT:
+  FORMAT: RGB
+  CUSTOM_AUG: EfficientDetResizeCrop
+  TRAIN_SIZE: 800
+  TEST_SIZE: 800
+  SCALE_RANGE: [0.8, 1]
+  TEST_INPUT_TYPE: 'square'
+OUTPUT_DIR: "/content/ckpt"

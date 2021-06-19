@@ -404,11 +404,11 @@ def _test_loader_from_config(cfg, dataset_name, mapper=None):
     )
     if mapper is None:
         mapper = DatasetMapper(cfg, False)
-    return {"dataset": dataset, "mapper": mapper, "num_workers": cfg.DATALOADER.NUM_WORKERS}
+    return {"dataset": dataset, "mapper": mapper, "num_workers": cfg.DATALOADER.NUM_WORKERS, "total_batch_size": cfg.IMS_PER_BATCH * 2}
 
 
 @configurable(from_config=_test_loader_from_config)
-def build_detection_test_loader(dataset, *, mapper, num_workers=0):
+def build_detection_test_loader(dataset, *, mapper, num_workers=0, total_batch_size = 1):
     """
     Similar to `build_detection_train_loader`, but uses a batch size of 1,
     and :class:`InferenceSampler`. This sampler coordinates all workers to
@@ -444,7 +444,7 @@ def build_detection_test_loader(dataset, *, mapper, num_workers=0):
     sampler = InferenceSampler(len(dataset))
     # Always use 1 image per worker during inference since this is the
     # standard when reporting inference time in papers.
-    batch_sampler = torch.utils.data.sampler.BatchSampler(sampler, 1, drop_last=False)
+    batch_sampler = torch.utils.data.sampler.BatchSampler(sampler, total_batch_size, drop_last=False)
     data_loader = torch.utils.data.DataLoader(
         dataset,
         num_workers=num_workers,
