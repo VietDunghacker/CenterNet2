@@ -404,7 +404,7 @@ def _test_loader_from_config(cfg, dataset_name, mapper=None):
     )
     if mapper is None:
         mapper = DatasetMapper(cfg, False)
-    return {"dataset": dataset, "mapper": mapper, "num_workers": cfg.DATALOADER.NUM_WORKERS, "total_batch_size": cfg.IMS_PER_BATCH * 2}
+    return {"dataset": dataset, "mapper": mapper, "num_workers": cfg.DATALOADER.NUM_WORKERS, "total_batch_size": cfg.SOLVER.IMS_PER_BATCH * 2}
 
 
 @configurable(from_config=_test_loader_from_config)
