@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import copy
 import datetime
 import itertools
 import json
@@ -143,7 +144,7 @@ def do_train(cfg, model, resume=False):
 		from centernet.data.custom_dataset_dataloader import build_custom_train_loader
 		data_loader = build_custom_train_loader(cfg, mapper=mapper)
 
-	cw = data_loader.batch_sampler.sampler.cw
+	cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
 
 	with EventStorage(start_iter) as storage:
 		step_timer = Timer()
