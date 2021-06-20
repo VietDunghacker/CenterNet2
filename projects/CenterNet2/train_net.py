@@ -147,7 +147,7 @@ def do_train(cfg, model, resume=False):
 	cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
 	txt = "Initial weight:\n"
 	for i, name in enumerate(classes):
-		txt += "{}:{}".format(name, cw[i])
+		txt += "{:40s}:{:6f}\n".format(name, cw[i])
 	logger.info(txt)
 
 	with EventStorage(start_iter) as storage:
@@ -197,7 +197,7 @@ def do_train(cfg, model, resume=False):
 				cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
 				txt = "New weight:\n"
 				for i, name in enumerate(classes):
-					txt += "{}:{}".format(name, data_loader.batch_sampler.sampler.cw[i])
+					txt += "{:40s}:{:6f}\n".format(name, data_loader.batch_sampler.sampler.cw[i])
 				logger.info(txt)
 
 
