@@ -212,7 +212,7 @@ def setup(args):
 	"""
 	cfg = get_cfg()
 	add_centernet_config(cfg)
-	cfg.merge_from_file("/content/CenterNet2/projects/CenterNet2/configs/CenterNet2_R2-101-DCN-BiFPN_4x+4x_1560_ST.yaml")
+	cfg.merge_from_file("/content/CenterNet2/projects/CenterNet2/configs/config.yaml")
 	cfg.DATASETS.TRAIN = ("celebrity_train",)
 	cfg.DATASETS.TEST = ("celebrity_valid",)
 	cfg.freeze()
