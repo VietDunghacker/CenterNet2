@@ -235,6 +235,7 @@ def setup(args):
 	cfg.DATASETS.TRAIN = ("celebrity_train",)
 	cfg.DATASETS.TEST = ("celebrity_valid",)
 	cfg.freeze()
+	default_setup(cfg, args)
 	return cfg
 
 
@@ -270,4 +271,3 @@ if __name__ == "__main__":
 		dist_url=args.dist_url,
 		args=(args,),
 	)
-	logger = setup_logger()
