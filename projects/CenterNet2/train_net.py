@@ -145,6 +145,10 @@ def do_train(cfg, model, resume=False):
 		data_loader = build_custom_train_loader(cfg, mapper=mapper)
 
 	cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
+	txt = "Initial weight:\n"
+	for i, name in enumerate(classes):
+		txt += "{}:{}".format(name, cw[i])
+	logger.info(txt)
 
 	with EventStorage(start_iter) as storage:
 		step_timer = Timer()
@@ -189,6 +193,13 @@ def do_train(cfg, model, resume=False):
 
 				data_loader.batch_sampler.sampler.cw = cw * ((1 - maps) ** 2)
 				data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
+
+				cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
+				txt = "New weight:\n"
+				for i, name in enumerate(classes):
+					txt += "{}:{}".format(name, data_loader.batch_sampler.sampler.cw[i])
+				logger.info(txt)
+
 
 				comm.synchronize()
 

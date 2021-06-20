@@ -449,7 +449,6 @@ def build_detection_test_loader(dataset, *, mapper, num_workers=0, total_batch_s
 		drop_last = False,
 		shuffle = False,
 		num_workers=num_workers,
-		pin_memory=True
 	)
 	return data_loader
 
