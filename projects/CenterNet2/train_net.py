@@ -25,6 +25,7 @@ from detectron2.solver import build_lr_scheduler, build_optimizer
 from detectron2.structures import BoxMode
 import detectron2.utils.comm as comm
 from detectron2.utils.events import CommonMetricPrinter, EventStorage, JSONWriter, TensorboardXWriter
+from detectron2.utils.logger import setup_logger
 
 from centernet.config import add_centernet_config
 from centernet.data.custom_build_augmentation import build_custom_augmentation
@@ -151,6 +152,7 @@ def do_train(cfg, model, resume=False):
 		for i, name in enumerate(classes):
 			txt += "{:40s}: {:6f}\n".format(name, cw[i])
 		logger.info(txt)
+		last_map = 0.
 
 	with EventStorage(start_iter) as storage:
 		step_timer = Timer()
@@ -189,18 +191,23 @@ def do_train(cfg, model, resume=False):
 				model.train()
 
 				if cfg.DATALOADER.SAMPLER_TRAIN == "ClassAwareSampler":
-					maps = []
-					for name in classes:
-						maps.append(test_result['bbox']['AP-{}'.format(name)])
-					maps = np.array(maps)
+					if last_map > test_result['bbox']['AP']:
+						data_loader.batch_sampler.sampler.cw = copy.deepcopy(cw)
+						logger.info("Reset weight")
+					else:
+						maps = []
+						for name in classes:
+							maps.append(test_result['bbox']['AP-{}'.format(name)])
+						maps = np.array(maps)
 
-					data_loader.batch_sampler.sampler.cw = cw * ((1 - maps / 100 + 1e-6) ** 2)
-					data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
+						data_loader.batch_sampler.sampler.cw = cw * ((1 - maps / 100 + 1e-6) ** 2)
+						data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
 
-					txt = "New weight:\n"
-					for i, name in enumerate(classes):
-						txt += "{:40s}: {:6f}\n".format(name, data_loader.batch_sampler.sampler.cw[i])
-					logger.info(txt)
+						txt = "New weight:\n"
+						for i, name in enumerate(classes):
+							txt += "{:40s}: {:6f}\n".format(name, data_loader.batch_sampler.sampler.cw[i])
+						logger.info(txt)
+					last_map = test_result['bbox']['AP']
 
 				comm.synchronize()
 
@@ -228,7 +235,6 @@ def setup(args):
 	cfg.DATASETS.TRAIN = ("celebrity_train",)
 	cfg.DATASETS.TEST = ("celebrity_valid",)
 	cfg.freeze()
-	default_setup(cfg, args)
 	return cfg
 
 
@@ -264,3 +270,4 @@ if __name__ == "__main__":
 		dist_url=args.dist_url,
 		args=(args,),
 	)
+	logger = setup_logger()
