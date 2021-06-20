@@ -90,7 +90,7 @@ def build_custom_train_loader(cfg, mapper=None):
 
 
 class ClassAwareSampler(Sampler):
-	def __init__(self, dataset_dicts, cfg, seed: Optional[int] = None):
+	def __init__(self, dataset_dicts, cfg):
 		"""
 		Args:
 			size (int): the total number of data of the underlying dataset to sample from
@@ -101,9 +101,6 @@ class ClassAwareSampler(Sampler):
 		self.dataset_dicts = dataset_dicts
 		self._size = cfg.TEST.EVAL_PERIOD * cfg.SOLVER.IMS_PER_BATCH
 		assert self._size > 0
-		if seed is None:
-			seed = comm.shared_random_seed()
-		self._seed = int(seed)
 		
 		self._rank = comm.get_rank()
 		self._world_size = comm.get_world_size()
@@ -123,17 +120,12 @@ class ClassAwareSampler(Sampler):
 
 	def __iter__(self):
 		start = self._rank
-		yield from itertools.islice(
-			self._infinite_indices(), start, None, self._world_size)
+		yield from itertools.islice(self._infinite_indices(), start, None, self._world_size)
 
 
 	def _infinite_indices(self):
-		g = torch.Generator()
-		g.manual_seed(self._seed)
 		while True:
-			ids = torch.multinomial(
-				self.weights, self._size, generator=g, 
-				replacement=True)
+			ids = torch.multinomial(self.weights, self._size, replacement=True)
 			yield from ids
 			self.weights = self._get_class_balance_factor(self.dataset_dicts)
 
