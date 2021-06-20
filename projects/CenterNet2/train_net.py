@@ -145,11 +145,12 @@ def do_train(cfg, model, resume=False):
 		from centernet.data.custom_dataset_dataloader import build_custom_train_loader
 		data_loader = build_custom_train_loader(cfg, mapper=mapper)
 
-	cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
-	txt = "Initial weight:\n"
-	for i, name in enumerate(classes):
-		txt += "{:40s}: {:6f}\n".format(name, cw[i])
-	logger.info(txt)
+	if cfg.DATALOADER.SAMPLER_TRAIN == "ClassAwareSampler":
+		cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
+		txt = "Initial weight:\n"
+		for i, name in enumerate(classes):
+			txt += "{:40s}: {:6f}\n".format(name, cw[i])
+		logger.info(txt)
 
 	with EventStorage(start_iter) as storage:
 		step_timer = Timer()
@@ -187,19 +188,20 @@ def do_train(cfg, model, resume=False):
 				test_result = do_test(cfg, model)
 				model.train()
 
-				maps = []
-				for name in classes:
-					maps.append(test_result['bbox']['AP-{}'.format(name)])
-				maps = np.array(maps)
+				if cfg.DATALOADER.SAMPLER_TRAIN == "ClassAwareSampler":
+					maps = []
+					for name in classes:
+						maps.append(test_result['bbox']['AP-{}'.format(name)])
+					maps = np.array(maps)
 
-				data_loader.batch_sampler.sampler.cw = cw * ((1 - maps / 100) ** 2)
-				data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
+					data_loader.batch_sampler.sampler.cw = cw * ((1 - maps / 100) ** 2)
+					data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
 
-				cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
-				txt = "New weight:\n"
-				for i, name in enumerate(classes):
-					txt += "{:40s}: {:6f}\n".format(name, data_loader.batch_sampler.sampler.cw[i])
-				logger.info(txt)
+					cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
+					txt = "New weight:\n"
+					for i, name in enumerate(classes):
+						txt += "{:40s}: {:6f}\n".format(name, data_loader.batch_sampler.sampler.cw[i])
+					logger.info(txt)
 
 
 				comm.synchronize()
