@@ -153,7 +153,6 @@ def do_train(cfg, model, resume=False):
 			data_time = data_timer.seconds()
 			storage.put_scalars(data_time=data_time)
 			step_timer.reset()
-			iteration = iteration + 1
 			storage.step()
 			loss_dict = model(data)
 
@@ -178,7 +177,7 @@ def do_train(cfg, model, resume=False):
 			data_timer.reset()
 			scheduler.step()
 
-			if (cfg.TEST.EVAL_PERIOD > 0 and iteration % cfg.TEST.EVAL_PERIOD == 0 and iteration != max_iter):
+			if (cfg.TEST.EVAL_PERIOD > 0 and (iteration + 1) % cfg.TEST.EVAL_PERIOD == 0 and iteration != max_iter):
 				model.eval()
 				test_result = do_test(cfg, model)
 				model.train()
@@ -193,11 +192,11 @@ def do_train(cfg, model, resume=False):
 
 				comm.synchronize()
 
-			if iteration - start_iter > 5 and \
-				(iteration % 20 == 0 or iteration == max_iter):
+			if iteration - start_iter > 5 and ((iteration + 1) % 20 == 0 or iteration == max_iter):
 				for writer in writers:
 					writer.write()
 			periodic_checkpointer.step(iteration)
+			iteration = iteration + 1
 
 		total_time = time.perf_counter() - start_time
 		logger.info(
