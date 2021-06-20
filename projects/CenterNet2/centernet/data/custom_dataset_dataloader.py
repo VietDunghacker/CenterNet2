@@ -128,6 +128,8 @@ class ClassAwareSampler(Sampler):
 			ids = torch.multinomial(self.weights, self._size, replacement=True)
 			yield from ids
 			self.weights = self._get_class_balance_factor(self.dataset_dicts)
+			logger = logging.getLogger("detectron2")
+			logger.info("Update weights")
 
 
 	def _get_class_balance_factor(self, dataset_dicts):
