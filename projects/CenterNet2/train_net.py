@@ -204,7 +204,7 @@ def do_train(cfg, model, resume=False):
 
 				comm.synchronize()
 
-			if iteration - start_iter > 5 and ((iteration + 1) % 20 == 0 or iteration == max_iter):
+			if iteration - start_iter > 5 and ((iteration + 1) % 50 == 0 or iteration == max_iter):
 				for writer in writers:
 					writer.write()
 			periodic_checkpointer.step(iteration)
