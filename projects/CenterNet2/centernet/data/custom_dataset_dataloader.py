@@ -129,14 +129,12 @@ class ClassAwareSampler(Sampler):
 			yield from ids
 			self.weights = self._get_class_balance_factor(self.dataset_dicts)
 
-
 	def _get_class_balance_factor(self, dataset_dicts):
 		# 1. For each category c, compute the fraction of images that contain it: f(c)
 		ret = []
 		for i, dataset_dict in enumerate(dataset_dicts):
 			cat_ids = {ann["category_id"] for ann in dataset_dict["annotations"]}
-			ret.append(sum(
-				[self.cw[cat_id] for cat_id in cat_ids]))
+			ret.append(sum([self.cw[cat_id] for cat_id in cat_ids]))
 		return torch.tensor(ret).float()
 
 
