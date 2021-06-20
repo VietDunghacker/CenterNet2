@@ -153,7 +153,6 @@ def do_train(cfg, model, resume=False):
 			data_time = data_timer.seconds()
 			storage.put_scalars(data_time=data_time)
 			step_timer.reset()
-			storage.step()
 			loss_dict = model(data)
 
 			losses = sum(loss for k, loss in loss_dict.items())
@@ -196,7 +195,9 @@ def do_train(cfg, model, resume=False):
 				for writer in writers:
 					writer.write()
 			periodic_checkpointer.step(iteration)
+
 			iteration = iteration + 1
+			storage.step()
 
 		total_time = time.perf_counter() - start_time
 		logger.info(
