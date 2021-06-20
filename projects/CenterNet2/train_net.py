@@ -157,23 +157,6 @@ def do_train(cfg, model, resume=False):
 			storage.step()
 			loss_dict = model(data)
 
-			if (cfg.TEST.EVAL_PERIOD > 0 and iteration % cfg.TEST.EVAL_PERIOD == 0 and iteration != max_iter):
-				model.eval()
-				test_result = do_test(cfg, model)
-				model.train()
-
-				maps = []
-				for name in classes:
-					maps.append(test_result['bbox']['AP-{}'.format(name)])
-				maps = np.array(maps)
-
-				data_loader.batch_sampler.sampler.cw = cw * ((1 - maps) ** 2)
-				data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
-
-				comm.synchronize()
-
-			periodic_checkpointer.step(iteration)
-
 			losses = sum(loss for k, loss in loss_dict.items())
 			assert torch.isfinite(losses).all(), loss_dict
 
@@ -195,10 +178,26 @@ def do_train(cfg, model, resume=False):
 			data_timer.reset()
 			scheduler.step()
 
+			if (cfg.TEST.EVAL_PERIOD > 0 and iteration % cfg.TEST.EVAL_PERIOD == 0 and iteration != max_iter):
+				model.eval()
+				test_result = do_test(cfg, model)
+				model.train()
+
+				maps = []
+				for name in classes:
+					maps.append(test_result['bbox']['AP-{}'.format(name)])
+				maps = np.array(maps)
+
+				data_loader.batch_sampler.sampler.cw = cw * ((1 - maps) ** 2)
+				data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
+
+				comm.synchronize()
+
 			if iteration - start_iter > 5 and \
 				(iteration % 20 == 0 or iteration == max_iter):
 				for writer in writers:
 					writer.write()
+			periodic_checkpointer.step(iteration)
 
 		total_time = time.perf_counter() - start_time
 		logger.info(
