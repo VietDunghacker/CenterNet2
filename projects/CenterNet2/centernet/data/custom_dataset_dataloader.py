@@ -99,7 +99,7 @@ class ClassAwareSampler(Sampler):
 				among workers (require synchronization among all workers).
 		"""
 		self.dataset_dicts = dataset_dicts
-		self._size = cfg.TEST.EVAL_PERIOD * cfg.SOLVER.IMS_PER_BATCH
+		self._size = cfg.SOLVER.IMS_PER_BATCH
 		assert self._size > 0
 		
 		self._rank = comm.get_rank()
@@ -128,8 +128,6 @@ class ClassAwareSampler(Sampler):
 			ids = torch.multinomial(self.weights, self._size, replacement=True)
 			yield from ids
 			self.weights = self._get_class_balance_factor(self.dataset_dicts)
-			logger = logging.getLogger("detectron2")
-			logger.info("Update weights")
 
 
 	def _get_class_balance_factor(self, dataset_dicts):
