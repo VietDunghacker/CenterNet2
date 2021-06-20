@@ -163,17 +163,14 @@ def do_train(cfg, model, resume=False):
 				model.train()
 				logger.info("Results: {}".format(test_result))
 
-				try:
-					maps = []
-					for name in classes:
-						maps.append(test_result['bbox']['AP-{}'.format(name)])
-					maps = np.array(maps)
+				maps = []
+				for name in classes:
+					maps.append(test_result['bbox']['AP-{}'.format(name)])
+				maps = np.array(maps)
 
-					data_loader.batch_sampler.sampler.cw = cw * ((1 - maps) ** 2)
-					data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
-				except:
-					pass
-					
+				data_loader.batch_sampler.sampler.cw = cw * ((1 - maps) ** 2)
+				data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
+
 				comm.synchronize()
 
 			periodic_checkpointer.step(iteration)
