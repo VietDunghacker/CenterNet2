@@ -21,11 +21,6 @@ MODEL:
     NUM_CLASSES: 19
     IN_FEATURES: ["p3", "p4"]
     SCORE_THRESH_TEST: 0.5
-  ROI_BOX_HEAD:
-    CAT_FREQ_PATH: "/gdrive/My Drive/data/cat_info.json"
-    FED_LOSS_NUM_CAT: 3
-    USE_SIGMOID_CE: True
-    USE_FED_LOSS: True
 TEST:
   EVAL_PERIOD: 500
   DETECTIONS_PER_IMAGE: 100
