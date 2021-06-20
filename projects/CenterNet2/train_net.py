@@ -161,7 +161,6 @@ def do_train(cfg, model, resume=False):
 				model.eval()
 				test_result = do_test(cfg, model)
 				model.train()
-				logger.info("Results: {}".format(test_result))
 
 				maps = []
 				for name in classes:
