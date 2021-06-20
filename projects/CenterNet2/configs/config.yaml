@@ -21,11 +21,6 @@ MODEL:
     NUM_CLASSES: 20
     IN_FEATURES: ["p3", "p4"]
     SCORE_THRESH_TEST: 0.5
-  ROI_BOX_HEAD:
-    CAT_FREQ_PATH: "/gdrive/My Drive/data/cat_info.json"
-    EQL_FREQ_CAT: 3
-    USE_SIGMOID_CE: True
-    USE_EQL_LOSS: True
 TEST:
   EVAL_PERIOD: 1000
   DETECTIONS_PER_IMAGE: 100
@@ -40,6 +35,7 @@ SOLVER:
 DATALOADER:
   ASPECT_RATIO_GROUPING: False
   NUM_WORKERS: 4
+  SAMPLER_TRAIN: "ClassAwareSampler"
 INPUT:
   FORMAT: RGB
   CUSTOM_AUG: EfficientDetResizeCrop

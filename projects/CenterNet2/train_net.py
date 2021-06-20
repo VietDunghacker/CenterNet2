@@ -197,7 +197,6 @@ def do_train(cfg, model, resume=False):
 					data_loader.batch_sampler.sampler.cw = cw * ((1 - maps / 100) ** 2)
 					data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
 
-					cw = copy.deepcopy(data_loader.batch_sampler.sampler.cw)
 					txt = "New weight:\n"
 					for i, name in enumerate(classes):
 						txt += "{:40s}: {:6f}\n".format(name, data_loader.batch_sampler.sampler.cw[i])
