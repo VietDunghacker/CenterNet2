@@ -25,7 +25,7 @@ MODEL:
     CAT_FREQ_PATH: "/gdrive/My Drive/data/cat_info.json"
     EQL_FREQ_CAT: 2
     USE_SIGMOID_CE: True
-    USE_RQL_LOSS: True
+    USE_EQL_LOSS: True
 TEST:
   EVAL_PERIOD: 1000
   DETECTIONS_PER_IMAGE: 100
