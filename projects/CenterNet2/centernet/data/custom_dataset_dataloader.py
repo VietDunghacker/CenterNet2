@@ -126,6 +126,8 @@ class ClassAwareSampler(Sampler):
 	def _infinite_indices(self):
 		while True:
 			ids = torch.multinomial(self.weights, self._size, replacement=True)
+			logger = logging.getLogger("detectron2")
+			logger.info(ids)
 			yield from ids
 			self.weights = self._get_class_balance_factor(self.dataset_dicts)
 
