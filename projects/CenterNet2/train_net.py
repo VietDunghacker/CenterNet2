@@ -44,6 +44,7 @@ classes = [
 	'Katerina Alexandre Hartford Graham',
 	'Kayla Noelle Ewell',
 	'Kelly Ann Hu',
+	'Lý Thất Hi',
 	'Nikolina Kamenova Dobreva',
 	'Odessa Zion Segall Adlon',
 	'Penelope Mitchell',
