@@ -142,7 +142,7 @@ def do_train(cfg, model, resume=False):
 		T.RandomBrightness(0.8, 1.2),
 		T.RandomContrast(0.8, 1.2),
 		T.RandomSaturation(0.8, 1.2),
-		T.RandomRotation(angle = 10, expand = False)
+		T.RandomRotation(angle = 5, expand = False)
 	])
 	mapper = DatasetMapper(cfg, True) if cfg.INPUT.CUSTOM_AUG == '' else DatasetMapper(cfg, True, augmentations=custom_augmentations)
 	if cfg.DATALOADER.SAMPLER_TRAIN in ['TrainingSampler', 'RepeatFactorTrainingSampler']:
