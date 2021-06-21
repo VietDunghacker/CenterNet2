@@ -169,33 +169,33 @@ def fast_rcnn_inference_single_image(
 	result.scores = scores
 	result.pred_classes = filter_inds[:, 1]
 
-    num_box = len(result)
-    detections = []
-    pred_classes = []
-    scores = []
+	num_box = len(result)
+	detections = []
+	pred_classes = []
+	scores = []
 
-    dic = defaultdict(lambda: [])
+	dic = defaultdict(lambda: [])
 
-    for i in range(num_box):
-        dic[tuple(result.pred_boxes[i].tensor.cpu().numpy()[0])].append((result.scores[i].item(), result.pred_classes[i].item()))
+	for i in range(num_box):
+		dic[tuple(result.pred_boxes[i].tensor.cpu().numpy()[0])].append((result.scores[i].item(), result.pred_classes[i].item()))
 
-    print(dic)
+	print(dic)
 
-    for box in dic.keys():
-        score_class_list = sorted(dic[box], reverse = True, key = lambda x: x[0])
-        score, clss = score_class_list[0]
+	for box in dic.keys():
+		score_class_list = sorted(dic[box], reverse = True, key = lambda x: x[0])
+		score, clss = score_class_list[0]
 
-        detections.append(torch.tensor(box).cuda())
-        pred_classes.append(clss)
-        scores.append(score)
+		detections.append(torch.tensor(box).cuda())
+		pred_classes.append(clss)
+		scores.append(score)
 
-    detections = torch.stack(detections)
-    pred_classes = torch.tensor(pred_classes).cuda()
-    scores = torch.tensor(scores).cuda()
+	detections = torch.stack(detections)
+	pred_classes = torch.tensor(pred_classes).cuda()
+	scores = torch.tensor(scores).cuda()
 
-    result.scores = scores
-    result.pred_classes = pred_classes
-    result.pred_boxes = Boxes(detections)
+	result.scores = scores
+	result.pred_classes = pred_classes
+	result.pred_boxes = Boxes(detections)
 
 	return result, filter_inds[:, 0]
 
