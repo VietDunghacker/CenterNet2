@@ -253,7 +253,7 @@ def main(args):
 		if cfg.TEST.AUG.ENABLED:
 			logger.info("Running inference with test-time augmentation ...")
 			model = GeneralizedRCNNWithTTA(cfg, model, batch_size=1)
-
+		model.eval()
 		return do_test(cfg, model)
 
 	do_train(cfg, model, resume=args.resume)
