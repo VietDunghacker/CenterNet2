@@ -197,7 +197,7 @@ def fast_rcnn_inference_single_image(
 	new_result.pred_classes = pred_classes
 	new_result.pred_boxes = Boxes(detections)
 
-	return new_result, filter_inds[:, 0]
+	return result, filter_inds[:, 0]
 
 
 class FastRCNNOutputs:
