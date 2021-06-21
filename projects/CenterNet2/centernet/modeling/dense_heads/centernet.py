@@ -538,7 +538,7 @@ class CenterNet(nn.Module):
 
 			dic = defaultdict(lambda: [])
 
-			for i in len(range(num_box)):
+			for i in range(len(num_box)):
 				dic[tuple(boxlist.pred_boxes[i].tensor.numpy())].append((boxlist.scores[i], boxlist.pred_classes[i]))
 
 			print(dic)
