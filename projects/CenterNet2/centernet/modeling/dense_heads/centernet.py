@@ -89,9 +89,7 @@ class CenterNet(nn.Module):
 					[(x.shape[2], x.shape[3]) for x in reg_pred_per_level])
 		
 		if not self.training:
-			return self.inference(
-				images, clss_per_level, reg_pred_per_level, 
-				agn_hm_pred_per_level, grids)
+			return self.inference(images, clss_per_level, reg_pred_per_level, agn_hm_pred_per_level, grids)
 		else:
 			pos_inds, labels, reg_targets, flattened_hms = \
 				self._get_ground_truth(
@@ -489,12 +487,9 @@ class CenterNet(nn.Module):
 			(dist_y <= strides_expanded[:, :, 0])
 
 
-	def inference(self, images, clss_per_level, reg_pred_per_level, 
-		agn_hm_pred_per_level, grids):
-		logits_pred = [x.sigmoid() if x is not None else None \
-			for x in clss_per_level]
-		agn_hm_pred_per_level = [x.sigmoid() if x is not None else None \
-			for x in agn_hm_pred_per_level]
+	def inference(self, images, clss_per_level, reg_pred_per_level, agn_hm_pred_per_level, grids):
+		logits_pred = [x.sigmoid() if x is not None else None for x in clss_per_level]
+		agn_hm_pred_per_level = [x.sigmoid() if x is not None else None for x in agn_hm_pred_per_level]
 
 		if self.only_proposal:
 			proposals = self.predict_instances(
@@ -511,12 +506,7 @@ class CenterNet(nn.Module):
 				proposals[p].remove('pred_boxes')
 
 		if self.debug:
-			debug_test(
-				[self.denormalizer(x) for x in images], 
-				logits_pred, reg_pred_per_level, 
-				agn_hm_pred_per_level, preds=proposals,
-				vis_thresh=self.vis_thresh, 
-				debug_show_name=False)
+			debug_test([self.denormalizer(x) for x in images], logits_pred, reg_pred_per_level, agn_hm_pred_per_level, preds=proposals, vis_thresh=self.vis_thresh, debug_show_name=False)
 		return proposals, {}
 
 
@@ -528,38 +518,6 @@ class CenterNet(nn.Module):
 				image_sizes, agn_hm_pred[l], l, is_proposal=is_proposal))
 		boxlists = list(zip(*sampled_boxes))
 		boxlists = [Instances.cat(boxlist) for boxlist in boxlists]
-
-		for boxlist in boxlists:
-			num_box = len(boxlist)
-
-			detections = []
-			pred_classes = []
-			scores = []
-
-			dic = defaultdict(lambda: [])
-
-
-			for i in range(num_box):
-				dic[tuple(boxlist.pred_boxes[i].tensor.cpu().numpy()[0])].append((boxlist.scores[i].item(), boxlist.pred_classes[i].item()))
-
-			print(dic)
-
-			for box in dic.keys():
-				score_class_list = sorted(dic[box], reverse = True, key = lambda x: x[0])
-				score, clss = score_class_list[0]
-
-				detections.append(torch.tensor(box).cuda())
-				pred_classes.append(clss)
-				scores.append(score)
-
-			detections = torch.stack(detections)
-			pred_classes = torch.tensor(pred_classes).cuda()
-			scores = torch.tensor(scores).cuda()
-
-			boxlist.scores = scores
-			boxlist.pred_classes = pred_classes
-			boxlist.pred_boxes = Boxes(detections)
-
 		boxlists = self.nms_and_topK(boxlists, nms=not self.not_nms)
 		return boxlists
 
