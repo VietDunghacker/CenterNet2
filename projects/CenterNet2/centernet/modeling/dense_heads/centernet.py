@@ -541,6 +541,8 @@ class CenterNet(nn.Module):
 			for i in len(range(num_box)):
 				dic[tuple(boxlist.pred_boxes[i].tensor.numpy())].append((boxlist.scores[i], boxlist.pred_classes[i]))
 
+			print(dic)
+
 			for box in dic.keys():
 				score_class_list = sorted(dic[box], reverse = True, key = lambda x: x[0])
 				score, clss = score_class_list[0]
