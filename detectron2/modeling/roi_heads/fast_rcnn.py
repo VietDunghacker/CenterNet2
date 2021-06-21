@@ -182,7 +182,7 @@ def fast_rcnn_inference_single_image(
 		dic[tuple(result.pred_boxes[i].tensor.cpu().numpy()[0])].append((result.scores[i].item(), result.pred_classes[i].item()))
 
 	print(dic)
-    print(filter_inds)
+	print(filter_inds)
 
 	for box in dic.keys():
 		score_class_list = sorted(dic[box], reverse = True, key = lambda x: x[0])
