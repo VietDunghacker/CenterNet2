@@ -33,28 +33,22 @@ from centernet.data.custom_build_augmentation import build_custom_augmentation
 from fvcore.common.timer import Timer
 
 classes = [
-	'Candice Rene Accola',
-	'Chelsea Royce Tavares',
-	'Claire Rhiannon Holt',
-	'Đỗ Viki',
-	'Elizabeth Blackmore',
-	'Elizabeth Melise Jow',
-	'Emma Kristina Degerstedt',
-	'Evanna Lynch',
-	'Julianne Alexandra Hough',
-	'Katerina Alexandre Hartford Graham',
-	'Kayla Noelle Ewell',
-	'Kelly Ann Hu',
-	'Lý Thất Hi',
-	'Nikolina Kamenova Dobreva',
-	'Odessa Zion Segall Adlon',
-	'Penelope Mitchell',
-	'Sara Canning',
-	'Scarlett Hannah Byrne',
-	'Teressa Liane',
-	'Tô Nguyệt'
+  'Candice Rene Accola',
+  'Claire Rhiannon Holt',
+  'Đỗ Viki',
+  'Elizabeth Blackmore',
+  'Elizabeth Melise Jow',
+  'Julianne Alexandra Hough',
+  'Katerina Alexandre Hartford Graham',
+  'Kayla Noelle Ewell',
+  'Lý Thất Hi',
+  'Nikolina Kamenova Dobreva',
+  'Penelope Mitchell',
+  'Sara Canning',
+  'Scarlett Hannah Byrne',
+  'Teressa Liane',
+  'Tô Nguyệt'
 ]
-
 logger = logging.getLogger("detectron2")
 
 '''class CustomMapper()
