@@ -138,12 +138,11 @@ def do_train(cfg, model, resume=False):
 
 	custom_augmentations = build_custom_augmentation(cfg, True)
 	custom_augmentations.extend([
-		T.RandomFlip(prob = 0.4, horizontal = False, vertical = True),
+		T.RandomFlip(prob = 0.00856, horizontal = False, vertical = True),
 		T.RandomBrightness(0.8, 1.8),
 		T.RandomContrast(0.6, 1.3),
 		T.RandomSaturation(0.8, 1.4),
-		T.RandomLighting(0.7),
-		T.RandomRotation(angle = [90,90], expand = False)
+		T.RandomRotation(angle = 10, expand = False)
 	])
 	mapper = DatasetMapper(cfg, True) if cfg.INPUT.CUSTOM_AUG == '' else DatasetMapper(cfg, True, augmentations=custom_augmentations)
 	if cfg.DATALOADER.SAMPLER_TRAIN in ['TrainingSampler', 'RepeatFactorTrainingSampler']:
