@@ -539,7 +539,7 @@ class CenterNet(nn.Module):
 			dic = defaultdict(lambda: [])
 
 			for i in range(num_box):
-				dic[tuple(boxlist.pred_boxes[i].tensor.numpy())].append((boxlist.scores[i], boxlist.pred_classes[i]))
+				dic[tuple(boxlist.pred_boxes[i].tensor.cpu().numpy())].append((boxlist.scores[i].item(), boxlist.pred_classes[i].item()))
 
 			print(dic)
 
@@ -547,13 +547,13 @@ class CenterNet(nn.Module):
 				score_class_list = sorted(dic[box], reverse = True, key = lambda x: x[0])
 				score, clss = score_class_list[0]
 
-				detections.append(torch.tensor(box))
+				detections.append(torch.tensor(box).cuda())
 				pred_classes.append(clss)
 				scores.append(score)
 
 			detections = torch.stack(detections)
-			pred_classes = torch.tensor(pred_classes)
-			scores = torch.tensor(scores)
+			pred_classes = torch.tensor(pred_classes).cuda()
+			scores = torch.tensor(scores).cuda()
 
 			boxlist.scores = scores
 			boxlist.pred_classes = pred_classes
