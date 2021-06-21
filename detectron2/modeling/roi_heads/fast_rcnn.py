@@ -1,4 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
+from collections import defaultdict
 import logging
 from typing import Dict, List, Tuple, Union
 import torch
