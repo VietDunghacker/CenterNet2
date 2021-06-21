@@ -170,7 +170,7 @@ def fast_rcnn_inference_single_image(
 	result.scores = scores
 	result.pred_classes = filter_inds[:, 1]
 
-    new_result = Instances(image_shape)
+	new_result = Instances(image_shape)
 	num_box = len(result)
 	detections = []
 	pred_classes = []
