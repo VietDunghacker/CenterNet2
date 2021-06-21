@@ -57,6 +57,11 @@ classes = [
 
 logger = logging.getLogger("detectron2")
 
+'''class CustomMapper()
+	def __init__(self, is_train: bool, augmentations: List[Union[T.Augmentation, T.Transform]]):
+		self.is_train = is_train
+		self.augmentations = T.AugmentationList(augmentations)'''
+
 def get_celebrity_dicts(csv_path):
 	data_csv = pd.read_csv(csv_path)
 	image_id_list = data_csv.image_id.unique()
@@ -111,9 +116,7 @@ def do_train(cfg, model, resume=False):
 	optimizer = build_optimizer(cfg, model)
 	scheduler = build_lr_scheduler(cfg, optimizer)
 
-	checkpointer = DetectionCheckpointer(
-		model, cfg.OUTPUT_DIR, optimizer=optimizer, scheduler=scheduler
-	)
+	checkpointer = DetectionCheckpointer(model, cfg.OUTPUT_DIR, optimizer=optimizer, scheduler=scheduler)
 
 	start_iter = (checkpointer.resume_or_load(cfg.MODEL.WEIGHTS, resume=resume,).get("iteration", -1) + 1)
 	if cfg.SOLVER.RESET_ITER:
@@ -135,9 +138,12 @@ def do_train(cfg, model, resume=False):
 
 	custom_augmentations = build_custom_augmentation(cfg, True)
 	custom_augmentations.extend([
+		T.RandomFlip(prob = 0.00856, horizontal = False, vertical = True),
 		T.RandomBrightness(0.9, 1.1),
 		T.RandomContrast(0.9, 1.1),
 		T.RandomSaturation(0.9, 1.1),
+		T.RandomLighting(1.0),
+		T.RandomRotation(5, expand = False)
 	])
 	mapper = DatasetMapper(cfg, True) if cfg.INPUT.CUSTOM_AUG == '' else DatasetMapper(cfg, True, augmentations=custom_augmentations)
 	if cfg.DATALOADER.SAMPLER_TRAIN in ['TrainingSampler', 'RepeatFactorTrainingSampler']:
