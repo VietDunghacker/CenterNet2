@@ -132,7 +132,6 @@ def do_train(cfg, model, resume=False):
 
 	custom_augmentations = build_custom_augmentation(cfg, True)
 	custom_augmentations.extend([
-		T.RandomFlip(prob = 0.00856, horizontal = False, vertical = True),
 		T.RandomBrightness(0.8, 1.2),
 		T.RandomContrast(0.8, 1.2),
 		T.RandomSaturation(0.8, 1.2),
