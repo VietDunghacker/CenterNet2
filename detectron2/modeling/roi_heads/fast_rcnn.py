@@ -170,6 +170,7 @@ def fast_rcnn_inference_single_image(
 	result.scores = scores
 	result.pred_classes = filter_inds[:, 1]
 
+    new_result = Instances(image_shape)
 	num_box = len(result)
 	detections = []
 	pred_classes = []
@@ -194,9 +195,9 @@ def fast_rcnn_inference_single_image(
 	pred_classes = torch.tensor(pred_classes).cuda()
 	scores = torch.tensor(scores).cuda()
 
-	result.scores = scores
-	result.pred_classes = pred_classes
-	result.pred_boxes = Boxes(detections)
+	new_result.scores = scores
+	new_result.pred_classes = pred_classes
+	new_result.pred_boxes = Boxes(detections)
 
 	return result, filter_inds[:, 0]
 
