@@ -188,7 +188,7 @@ def do_train(cfg, model, resume=False):
 				model.train()
 
 				if cfg.DATALOADER.SAMPLER_TRAIN == "ClassAwareSampler":
-					if last_map > test_result['bbox']['AP']:
+					if test_result['bbox']['AP'] / last_map <= 1.01:
 						data_loader.batch_sampler.sampler.cw = copy.deepcopy(cw)
 						logger.info("Reset weight")
 					else:
