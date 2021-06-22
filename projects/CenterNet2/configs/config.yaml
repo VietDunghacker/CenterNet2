@@ -2,8 +2,6 @@ _BASE_: "Base-CenterNet2.yaml"
 MODEL:
   BACKBONE:
     NAME: "build_res2net_bifpn_backbone"
-  RESNETS:
-    NORM: "BN"
   BIFPN:
     NUM_BIFPN: 7
     OUT_CHANNELS: 288
@@ -19,8 +17,10 @@ MODEL:
     IGNORE_HIGH_FP: -1.
     NUM_CLASSES: 15
     USE_DEFORMABLE: True
-    POST_NMS_TOPK_TRAIN: 500
-    POST_NMS_TOPK_TEST: 64
+    PRE_NMS_TOPK_TRAIN: 100
+    PRE_NMS_TOPK_TEST: 100
+    POST_NMS_TOPK_TRAIN: 16
+    POST_NMS_TOPK_TEST: 16
   ROI_HEADS:
     NUM_CLASSES: 15
     IN_FEATURES: ["p3", "p4"]
