@@ -1,13 +1,13 @@
 _BASE_: "Base-SparseRCNN.yaml"
 MODEL:
-  BACKBONE:
-    NAME: "build_resnet_fpn_backbone"
   WEIGHTS: "detectron2://ImageNetPretrained/FAIR/X-101-32x8d.pkl"
   RESNETS:
     STRIDE_IN_1X1: False  # this is a C2 model
     NUM_GROUPS: 32
     WIDTH_PER_GROUP: 8
     DEPTH: 101
+    DEFORM_ON_PER_STAGE: [False, False, True, True] # on Res4, Res5
+    DEFORM_MODULATED: True
   PIXEL_STD: [57.375, 57.120, 58.395]
   ROI_HEADS:
     SCORE_THRESH_TEST: 0.001
