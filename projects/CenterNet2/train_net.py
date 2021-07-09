@@ -27,28 +27,36 @@ import detectron2.utils.comm as comm
 from detectron2.utils.events import CommonMetricPrinter, EventStorage, JSONWriter, TensorboardXWriter
 from detectron2.utils.logger import setup_logger
 
-from centernet.config import add_centernet_config
+from sparsercnn import SparseRCNNDatasetMapper, add_sparsercnn_config
 from centernet.data.custom_build_augmentation import build_custom_augmentation
 
 from fvcore.common.timer import Timer
 
 classes = [
   'Candice Rene Accola',
+  'Chelsea Royce Tavares',
   'Claire Rhiannon Holt',
   'Đỗ Viki',
   'Elizabeth Blackmore',
   'Elizabeth Melise Jow',
+  'Emma Kristina Degerstedt',
+  'Evanna Lynch',
   'Julianne Alexandra Hough',
   'Katerina Alexandre Hartford Graham',
   'Kayla Noelle Ewell',
+  'Kelly Ann Hu',
   'Lý Thất Hi',
+  'Nại Nại Fox',
   'Nikolina Kamenova Dobreva',
+  'Odessa Zion Segall Adlon',
   'Penelope Mitchell',
   'Sara Canning',
   'Scarlett Hannah Byrne',
   'Teressa Liane',
-  'Tô Nguyệt'
+  'Tô Tiểu Tiểu',
+  'Vũ Trụ'
 ]
+
 logger = logging.getLogger("detectron2")
 
 '''class CustomMapper()
@@ -227,8 +235,8 @@ def setup(args):
 	Create configs and perform basic setups.
 	"""
 	cfg = get_cfg()
-	add_centernet_config(cfg)
-	cfg.merge_from_file("/content/CenterNet2/projects/CenterNet2/configs/config.yaml")
+	add_sparsercnn_config(cfg)
+	cfg.merge_from_file("/content/CenterNet2/projects/CenterNet2/configs/sparse.yaml")
 	cfg.DATASETS.TRAIN = ("celebrity_train",)
 	cfg.DATASETS.TEST = ("celebrity_valid",)
 	cfg.freeze()
