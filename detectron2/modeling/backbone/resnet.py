@@ -3,6 +3,7 @@ import numpy as np
 import fvcore.nn.weight_init as weight_init
 import torch
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint as cp
 from torch import nn
 
 from detectron2.layers import (
