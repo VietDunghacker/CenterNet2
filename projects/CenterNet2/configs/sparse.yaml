@@ -1,6 +1,6 @@
 _BASE_: "Base-SparseRCNN.yaml"
 MODEL:
-  WEIGHTS: "https://mailnankaieducn-my.sharepoint.com/:u:/g/personal/shgao_mail_nankai_edu_cn/EZhtWgMRlxpGtJmtJ2zP1_QBqvmu_FJ05vUgOq30ElT9yg?e=e5FRD8"
+  WEIGHTS: "/gdrive/My Drive/data/r2_101.pkl"
   RESNETS:
     SCALE: 4
     WIDTH_PER_GROUP: 26
