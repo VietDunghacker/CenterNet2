@@ -1,4 +1,4 @@
-_BASE_: "Base-CenterNet2.yaml"
+_BASE_: "Base-SparseRCNN.yaml"
 MODEL:
   BACKBONE:
     NAME: "build_res2net_bifpn_backbone"
