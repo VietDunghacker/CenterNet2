@@ -205,10 +205,10 @@ class BottleneckBlock(CNNBlockBase):
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
-			out = F.relu_(out)
+			out = F.silu(out, inplace = True)
 
 			out = self.conv2(out)
-			out = F.relu_(out)
+			out = F.silu(out, inplace = True)
 
 			out = self.conv3(out)
 
@@ -322,7 +322,7 @@ class DeformBottleneckBlock(CNNBlockBase):
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
-			out = F.relu_(out)
+			out = F.silu(out, inplace = True)
 
 			if self.deform_modulated:
 				offset_mask = self.conv2_offset(out)
@@ -333,7 +333,7 @@ class DeformBottleneckBlock(CNNBlockBase):
 			else:
 				offset = self.conv2_offset(out)
 				out = self.conv2(out, offset)
-			out = F.relu_(out)
+			out = F.silu(out, inplace = True)
 
 			out = self.conv3(out)
 
