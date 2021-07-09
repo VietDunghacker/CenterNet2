@@ -1,6 +1,6 @@
 _BASE_: "Base-SparseRCNN.yaml"
 MODEL:
-  WEIGHTS: "/content/ckpt/model_0001499.pth"
+  WEIGHTS: "/content/ckpt/model_0000249.pth"
   RESNETS:
     STRIDE_IN_1X1: False  # this is a C2 model
     NUM_GROUPS: 64
