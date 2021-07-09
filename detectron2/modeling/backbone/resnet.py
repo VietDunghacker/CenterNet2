@@ -85,7 +85,7 @@ class BasicBlock(CNNBlockBase):
 				weight_init.c2_msra_fill(layer)
 
 	def forward(self, x):
-        def _inner_forward(x):
+		def _inner_forward(x):
 			out = self.conv1(x)
 			out = F.relu_(out)
 			out = self.conv2(out)
