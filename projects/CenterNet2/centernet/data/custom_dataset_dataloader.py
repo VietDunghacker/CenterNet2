@@ -99,7 +99,7 @@ class ClassAwareSampler(Sampler):
 				among workers (require synchronization among all workers).
 		"""
 		self.dataset_dicts = dataset_dicts
-		self._size = cfg.SOLVER.IMS_PER_BATCH
+		self._size = cfg.SOLVER.IMS_PER_BATCH * 10
 		assert self._size > 0
 		
 		self._rank = comm.get_rank()
