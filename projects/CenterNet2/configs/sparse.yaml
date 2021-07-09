@@ -9,6 +9,10 @@ MODEL:
     DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
     DEFORM_MODULATED: True
   PIXEL_STD: [57.375, 57.120, 58.395]
+  FPN:
+    NORM: 'GN'
+  ROI_BOX_HEADS:
+    NORM: 'GN'
   ROI_HEADS:
     SCORE_THRESH_TEST: 0.001
   SparseRCNN:
