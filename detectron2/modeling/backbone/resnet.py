@@ -249,6 +249,7 @@ class DeformBottleneckBlock(CNNBlockBase):
 		deform_num_groups=1,
 	):
 		super().__init__(in_channels, out_channels, stride)
+		self.with_cp = True
 		self.deform_modulated = deform_modulated
 
 		if in_channels != out_channels:
@@ -319,28 +320,35 @@ class DeformBottleneckBlock(CNNBlockBase):
 		nn.init.constant_(self.conv2_offset.bias, 0)
 
 	def forward(self, x):
-		out = self.conv1(x)
-		out = F.relu_(out)
+		def _inner_forward(x):
+			out = self.conv1(x)
+			out = F.relu_(out)
 
-		if self.deform_modulated:
-			offset_mask = self.conv2_offset(out)
-			offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
-			offset = torch.cat((offset_x, offset_y), dim=1)
-			mask = mask.sigmoid()
-			out = self.conv2(out, offset, mask)
+			if self.deform_modulated:
+				offset_mask = self.conv2_offset(out)
+				offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
+				offset = torch.cat((offset_x, offset_y), dim=1)
+				mask = mask.sigmoid()
+				out = self.conv2(out, offset, mask)
+			else:
+				offset = self.conv2_offset(out)
+				out = self.conv2(out, offset)
+			out = F.relu_(out)
+
+			out = self.conv3(out)
+
+			if self.shortcut is not None:
+				shortcut = self.shortcut(x)
+			else:
+				shortcut = x
+
+			out += shortcut
+			return out
+		
+		if self.with_cp and x.requires_grad:
+			out = cp.checkpoint(_inner_forward, x)
 		else:
-			offset = self.conv2_offset(out)
-			out = self.conv2(out, offset)
-		out = F.relu_(out)
-
-		out = self.conv3(out)
-
-		if self.shortcut is not None:
-			shortcut = self.shortcut(x)
-		else:
-			shortcut = x
-
-		out += shortcut
+			out = _inner_forward(x)
 		out = F.relu_(out)
 		return out
 
