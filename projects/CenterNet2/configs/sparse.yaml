@@ -1,15 +1,14 @@
 _BASE_: "Base-SparseRCNN.yaml"
 MODEL:
   BACKBONE:
-    NAME: "build_res2net_backbone"
-  WEIGHTS: "/gdrive/My Drive/data/CenterNet2_R2-101-DCN-BiFPN_4x+4x_1560_ST.pth"
+    NAME: "build_resnet_fpn_backbone"
+  WEIGHTS: "detectron2://ImageNetPretrained/FAIR/X-101-32x8d.pkl"
   RESNETS:
+    STRIDE_IN_1X1: False  # this is a C2 model
+    NUM_GROUPS: 32
+    WIDTH_PER_GROUP: 8
     DEPTH: 101
-    WIDTH_PER_GROUP: 26
-    DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
-    DEFORM_MODULATED: True
-  PIXEL_MEAN: [123.675, 116.280, 103.530]
-  PIXEL_STD: [58.395, 57.12, 57.375]
+  PIXEL_STD: [57.375, 57.120, 58.395]
   ROI_HEADS:
     SCORE_THRESH_TEST: 0.001
   SparseRCNN:
