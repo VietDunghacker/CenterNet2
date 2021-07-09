@@ -9,7 +9,7 @@ MODEL:
   RESNETS:
     DEPTH: 101
     WIDTH_PER_GROUP: 26
-    DEFORM_ON_PER_STAGE: [False, False, True, True] # on Res4, Res5
+    DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
     DEFORM_MODULATED: True
   PIXEL_MEAN: [123.675, 116.280, 103.530]
   PIXEL_STD: [58.395, 57.12, 57.375]

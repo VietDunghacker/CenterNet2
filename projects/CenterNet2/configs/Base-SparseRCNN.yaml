@@ -27,7 +27,6 @@ SOLVER:
   BACKBONE_MULTIPLIER: 1.0  # keep same with BASE_LR.
   CLIP_GRADIENTS:
     ENABLED: True
-    CLIP_TYPE: "full_model"
     CLIP_VALUE: 1.0
     NORM_TYPE: 2.0
 SEED: 40244023
