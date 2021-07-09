@@ -495,6 +495,8 @@ _C.MODEL.RESNETS.DEFORM_ON_PER_STAGE = [False, False, False, False]
 _C.MODEL.RESNETS.DEFORM_MODULATED = False
 # Number of groups in deformable conv.
 _C.MODEL.RESNETS.DEFORM_NUM_GROUPS = 1
+# scale for res2net
+_C.MODEL.RESNETS.SCALE = 4
 
 
 # ---------------------------------------------------------------------------- #

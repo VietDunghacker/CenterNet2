@@ -1,10 +1,9 @@
 _BASE_: "Base-SparseRCNN.yaml"
 MODEL:
-  WEIGHTS: "/gdrive/My Drive/checkpoints/sparsercnn.pth"
+  WEIGHTS: "/gdrive/My Drive/data/r101_300pro_3x_model.pth"
   RESNETS:
-    STRIDE_IN_1X1: False  # this is a C2 model
-    NUM_GROUPS: 64
-    WIDTH_PER_GROUP: 4
+    SCALE: 4
+    WIDTH_PER_GROUP: 26
     DEPTH: 101
     DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
     DEFORM_MODULATED: True
@@ -27,9 +26,9 @@ SOLVER:
   CHECKPOINT_PERIOD: 250
   LR_SCHEDULER_NAME: "WarmupCosineLR"
   BASE_LR: 0.000025
-  IMS_PER_BATCH: 12
+  IMS_PER_BATCH: 10
   WARMUP_ITERS: 500
-  RESET_ITER: False
+  RESET_ITER: True
   AMP:
     ENABLED: True
 DATALOADER:

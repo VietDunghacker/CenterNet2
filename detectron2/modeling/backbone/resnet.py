@@ -1,9 +1,8 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import numpy as np
 import fvcore.nn.weight_init as weight_init
 import torch
 import torch.nn.functional as F
-import torch.utils.checkpoint as cp
 from torch import nn
 
 from detectron2.layers import (
@@ -30,10 +29,16 @@ __all__ = [
 ]
 
 
+ResNetBlockBase = CNNBlockBase
+"""
+Alias for backward compatibiltiy.
+"""
+
+
 class BasicBlock(CNNBlockBase):
 	"""
-	The basic residual block for ResNet-18 and ResNet-34 defined in :paper:`ResNet`,
-	with two 3x3 conv layers and a projection shortcut if needed.
+	The basic residual block for ResNet-18 and ResNet-34, with two 3x3 conv layers
+	and a projection shortcut if needed.
 	"""
 
 	def __init__(self, in_channels, out_channels, *, stride=1, norm="BN"):
@@ -106,12 +111,9 @@ class BasicBlock(CNNBlockBase):
 		out = F.relu_(out)
 		return out
 
-
 class BottleneckBlock(CNNBlockBase):
 	"""
-	The standard bottleneck residual block used by ResNet-50, 101 and 152
-	defined in :paper:`ResNet`.  It contains 3 conv layers with kernels
-	1x1, 3x3, 1x1, and a projection shortcut if needed.
+	The standard bottle2neck residual block used by Res2Net-50, 101 and 152.
 	"""
 
 	def __init__(
@@ -125,6 +127,8 @@ class BottleneckBlock(CNNBlockBase):
 		norm="BN",
 		stride_in_1x1=False,
 		dilation=1,
+		basewidth=26, 
+		scale=4,
 	):
 		"""
 		Args:
@@ -141,13 +145,17 @@ class BottleneckBlock(CNNBlockBase):
 		self.with_cp = True
 
 		if in_channels != out_channels:
-			self.shortcut = Conv2d(
-				in_channels,
-				out_channels,
-				kernel_size=1,
-				stride=stride,
-				bias=False,
-				norm=get_norm(norm, out_channels),
+			self.shortcut = nn.Sequential(
+				nn.AvgPool2d(kernel_size=stride, stride=stride, 
+					ceil_mode=True, count_include_pad=False),
+				Conv2d(
+					in_channels,
+					out_channels,
+					kernel_size=1,
+					stride=1,
+					bias=False,
+					norm=get_norm(norm, out_channels),
+				)
 			)
 		else:
 			self.shortcut = None
@@ -156,6 +164,7 @@ class BottleneckBlock(CNNBlockBase):
 		# The subsequent fb.torch.resnet and Caffe2 ResNe[X]t implementations have
 		# stride in the 3x3 conv
 		stride_1x1, stride_3x3 = (stride, 1) if stride_in_1x1 else (1, stride)
+		width = bottleneck_channels//scale
 
 		self.conv1 = Conv2d(
 			in_channels,
@@ -165,18 +174,29 @@ class BottleneckBlock(CNNBlockBase):
 			bias=False,
 			norm=get_norm(norm, bottleneck_channels),
 		)
+		if scale == 1:
+		  self.nums = 1
+		else:
+		  self.nums = scale -1
+		if self.in_channels!=self.out_channels and stride_3x3!=2:
+			self.pool = nn.AvgPool2d(kernel_size=3, stride = stride_3x3, padding=1)
 
-		self.conv2 = Conv2d(
-			bottleneck_channels,
-			bottleneck_channels,
-			kernel_size=3,
-			stride=stride_3x3,
-			padding=1 * dilation,
-			bias=False,
-			groups=num_groups,
-			dilation=dilation,
-			norm=get_norm(norm, bottleneck_channels),
-		)
+		convs = []
+		bns = []
+		for i in range(self.nums):
+			convs.append(nn.Conv2d(
+							width, 
+							width, 
+							kernel_size=3, 
+							stride=stride_3x3, 
+							padding=1 * dilation, 
+							bias=False,
+							groups=num_groups,
+							dilation=dilation,
+							))
+			bns.append(get_norm(norm, width))
+		self.convs = nn.ModuleList(convs)
+		self.bns = nn.ModuleList(bns)
 
 		self.conv3 = Conv2d(
 			bottleneck_channels,
@@ -185,8 +205,20 @@ class BottleneckBlock(CNNBlockBase):
 			bias=False,
 			norm=get_norm(norm, out_channels),
 		)
-
-		for layer in [self.conv1, self.conv2, self.conv3, self.shortcut]:
+		self.scale = scale
+		self.width = width
+		self.in_channels = in_channels
+		self.out_channels = out_channels
+		self.stride_3x3 = stride_3x3
+		for layer in [self.conv1, self.conv3]:
+			if layer is not None:  # shortcut can be None
+				weight_init.c2_msra_fill(layer)
+		if self.shortcut is not None:
+			for layer in self.shortcut.modules():
+				if isinstance(layer, Conv2d):
+					weight_init.c2_msra_fill(layer)
+				
+		for layer in self.convs:
 			if layer is not None:  # shortcut can be None
 				weight_init.c2_msra_fill(layer)
 
@@ -207,8 +239,22 @@ class BottleneckBlock(CNNBlockBase):
 			out = self.conv1(x)
 			out = F.silu(out, inplace = True)
 
-			out = self.conv2(out)
-			out = F.silu(out, inplace = True)
+			spx = torch.split(out, self.width, 1)
+			for i in range(self.nums):
+				if i==0 or self.in_channels!=self.out_channels:
+					sp = spx[i]
+				else:
+					sp = sp + spx[i]
+				sp = self.convs[i](sp)
+				sp = F.silu(self.bns[i](sp), inplace = True)
+				if i==0:
+					out = sp
+				else:
+					out = torch.cat((out, sp), 1)
+			if self.scale!=1 and self.stride_3x3==1:
+				out = torch.cat((out, spx[self.nums]), 1)
+			elif self.scale != 1 and self.stride_3x3==2:
+				out = torch.cat((out, self.pool(spx[self.nums])), 1)
 
 			out = self.conv3(out)
 
@@ -223,15 +269,15 @@ class BottleneckBlock(CNNBlockBase):
 		if self.with_cp and x.requires_grad:
 			out = cp.checkpoint(_inner_forward, x)
 		else:
-			out = _inner_forward(x)
+			out = _inner_forward(x)		
 		out = F.relu_(out)
 		return out
 
 
-class DeformBottleneckBlock(CNNBlockBase):
+class DeformBottleneckBlock(ResNetBlockBase):
 	"""
-	Similar to :class:`BottleneckBlock`, but with :paper:`deformable conv <deformconv>`
-	in the 3x3 convolution.
+	Not implemented for res2net yet.
+	Similar to :class:`BottleneckBlock`, but with deformable conv in the 3x3 convolution.
 	"""
 
 	def __init__(
@@ -247,24 +293,39 @@ class DeformBottleneckBlock(CNNBlockBase):
 		dilation=1,
 		deform_modulated=False,
 		deform_num_groups=1,
+		basewidth=26, 
+		scale=4,
 	):
 		super().__init__(in_channels, out_channels, stride)
 		self.with_cp = True
 		self.deform_modulated = deform_modulated
 
 		if in_channels != out_channels:
-			self.shortcut = Conv2d(
-				in_channels,
-				out_channels,
-				kernel_size=1,
-				stride=stride,
-				bias=False,
-				norm=get_norm(norm, out_channels),
+			# self.shortcut = Conv2d(
+			#	in_channels,
+			#	out_channels,
+			#	kernel_size=1,
+			#	stride=stride,
+			#	bias=False,
+			#	norm=get_norm(norm, out_channels),
+			# )
+			self.shortcut = nn.Sequential(
+				nn.AvgPool2d(kernel_size=stride, stride=stride, 
+					ceil_mode=True, count_include_pad=False),
+				Conv2d(
+					in_channels,
+					out_channels,
+					kernel_size=1,
+					stride=1,
+					bias=False,
+					norm=get_norm(norm, out_channels),
+				)
 			)
 		else:
 			self.shortcut = None
 
 		stride_1x1, stride_3x3 = (stride, 1) if stride_in_1x1 else (1, stride)
+		width = bottleneck_channels//scale
 
 		self.conv1 = Conv2d(
 			in_channels,
@@ -275,6 +336,13 @@ class DeformBottleneckBlock(CNNBlockBase):
 			norm=get_norm(norm, bottleneck_channels),
 		)
 
+		if scale == 1:
+		  self.nums = 1
+		else:
+		  self.nums = scale -1
+		if self.in_channels!=self.out_channels and stride_3x3!=2:
+			self.pool = nn.AvgPool2d(kernel_size=3, stride = stride_3x3, padding=1)
+
 		if deform_modulated:
 			deform_conv_op = ModulatedDeformConv
 			# offset channels are 2 or 3 (if with modulated) * kernel_size * kernel_size
@@ -283,26 +351,56 @@ class DeformBottleneckBlock(CNNBlockBase):
 			deform_conv_op = DeformConv
 			offset_channels = 18
 
-		self.conv2_offset = Conv2d(
-			bottleneck_channels,
-			offset_channels * deform_num_groups,
-			kernel_size=3,
-			stride=stride_3x3,
-			padding=1 * dilation,
-			dilation=dilation,
-		)
-		self.conv2 = deform_conv_op(
-			bottleneck_channels,
-			bottleneck_channels,
-			kernel_size=3,
-			stride=stride_3x3,
-			padding=1 * dilation,
-			bias=False,
-			groups=num_groups,
-			dilation=dilation,
-			deformable_groups=deform_num_groups,
-			norm=get_norm(norm, bottleneck_channels),
-		)
+		# self.conv2_offset = Conv2d(
+		#	bottleneck_channels,
+		#	offset_channels * deform_num_groups,
+		#	kernel_size=3,
+		#	stride=stride_3x3,
+		#	padding=1 * dilation,
+		#	dilation=dilation,
+		# )
+		# self.conv2 = deform_conv_op(
+		#	bottleneck_channels,
+		#	bottleneck_channels,
+		#	kernel_size=3,
+		#	stride=stride_3x3,
+		#	padding=1 * dilation,
+		#	bias=False,
+		#	groups=num_groups,
+		#	dilation=dilation,
+		#	deformable_groups=deform_num_groups,
+		#	norm=get_norm(norm, bottleneck_channels),
+		# )
+
+		conv2_offsets = []
+		convs = []
+		bns = []
+		for i in range(self.nums):
+			conv2_offsets.append(Conv2d(
+							width, 
+							offset_channels * deform_num_groups, 
+							kernel_size=3, 
+							stride=stride_3x3, 
+							padding=1 * dilation, 
+							bias=False,
+							groups=num_groups,
+							dilation=dilation,
+							))
+			convs.append(deform_conv_op(
+							width, 
+							width, 
+							kernel_size=3, 
+							stride=stride_3x3, 
+							padding=1 * dilation, 
+							bias=False,
+							groups=num_groups,
+							dilation=dilation,
+							deformable_groups=deform_num_groups,
+							))
+			bns.append(get_norm(norm, width))
+		self.conv2_offsets = nn.ModuleList(conv2_offsets)
+		self.convs = nn.ModuleList(convs)
+		self.bns = nn.ModuleList(bns)
 
 		self.conv3 = Conv2d(
 			bottleneck_channels,
@@ -311,29 +409,77 @@ class DeformBottleneckBlock(CNNBlockBase):
 			bias=False,
 			norm=get_norm(norm, out_channels),
 		)
+		self.scale = scale
+		self.width = width
+		self.in_channels = in_channels
+		self.out_channels = out_channels
+		self.stride_3x3 = stride_3x3
+		# for layer in [self.conv1, self.conv2, self.conv3, self.shortcut]:
+		#	if layer is not None:  # shortcut can be None
+		#		weight_init.c2_msra_fill(layer)
 
-		for layer in [self.conv1, self.conv2, self.conv3, self.shortcut]:
+		# nn.init.constant_(self.conv2_offset.weight, 0)
+		# nn.init.constant_(self.conv2_offset.bias, 0)
+		for layer in [self.conv1, self.conv3]:
+			if layer is not None:  # shortcut can be None
+				weight_init.c2_msra_fill(layer)
+		if self.shortcut is not None:
+			for layer in self.shortcut.modules():
+				if isinstance(layer, Conv2d):
+					weight_init.c2_msra_fill(layer)
+				
+		for layer in self.convs:
 			if layer is not None:  # shortcut can be None
 				weight_init.c2_msra_fill(layer)
 
-		nn.init.constant_(self.conv2_offset.weight, 0)
-		nn.init.constant_(self.conv2_offset.bias, 0)
+		for layer in self.conv2_offsets:
+			if layer.weight is not None:
+				nn.init.constant_(layer.weight, 0)
+			if layer.bias is not None:
+				nn.init.constant_(layer.bias, 0)
 
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
 			out = F.silu(out, inplace = True)
 
-			if self.deform_modulated:
-				offset_mask = self.conv2_offset(out)
-				offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
-				offset = torch.cat((offset_x, offset_y), dim=1)
-				mask = mask.sigmoid()
-				out = self.conv2(out, offset, mask)
-			else:
-				offset = self.conv2_offset(out)
-				out = self.conv2(out, offset)
-			out = F.silu(out, inplace = True)
+			# if self.deform_modulated:
+			#	offset_mask = self.conv2_offset(out)
+			#	offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
+			#	offset = torch.cat((offset_x, offset_y), dim=1)
+			#	mask = mask.sigmoid()
+			#	out = self.conv2(out, offset, mask)
+			# else:
+			#	offset = self.conv2_offset(out)
+			#	out = self.conv2(out, offset)
+			# out = F.silu(out, inplace = True)
+
+			spx = torch.split(out, self.width, 1)
+			for i in range(self.nums):
+				if i==0 or self.in_channels!=self.out_channels:
+					sp = spx[i].contiguous()
+				else:
+					sp = sp + spx[i].contiguous()
+				
+				# sp = self.convs[i](sp)
+				if self.deform_modulated:
+					offset_mask = self.conv2_offsets[i](sp)
+					offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
+					offset = torch.cat((offset_x, offset_y), dim=1)
+					mask = mask.sigmoid()
+					sp = self.convs[i](sp, offset, mask)
+				else:
+					offset = self.conv2_offsets[i](sp)
+					sp = self.convs[i](sp, offset)
+				sp = F.silu(self.bns[i](sp), inplace = True)
+				if i==0:
+					out = sp
+				else:
+					out = torch.cat((out, sp), 1)
+			if self.scale !=1 and self.stride_3x3==1:
+				out = torch.cat((out, spx[self.nums]), 1)
+			elif self.scale != 1 and self.stride_3x3==2:
+				out = torch.cat((out, self.pool(spx[self.nums])), 1)
 
 			out = self.conv3(out)
 
@@ -344,13 +490,39 @@ class DeformBottleneckBlock(CNNBlockBase):
 
 			out += shortcut
 			return out
-		
 		if self.with_cp and x.requires_grad:
 			out = cp.checkpoint(_inner_forward, x)
 		else:
 			out = _inner_forward(x)
 		out = F.relu_(out)
 		return out
+
+def make_stage(block_class, num_blocks, first_stride, *, in_channels, out_channels, **kwargs):
+	"""
+	Create a list of blocks just like those in a ResNet stage.
+	Args:
+		block_class (type): a subclass of ResNetBlockBase
+		num_blocks (int):
+		first_stride (int): the stride of the first block. The other blocks will have stride=1.
+		in_channels (int): input channels of the entire stage.
+		out_channels (int): output channels of **every block** in the stage.
+		kwargs: other arguments passed to the constructor of every block.
+	Returns:
+		list[nn.Module]: a list of block module.
+	"""
+	assert "stride" not in kwargs, "Stride of blocks in make_stage cannot be changed."
+	blocks = []
+	for i in range(num_blocks):
+		blocks.append(
+			block_class(
+				in_channels=in_channels,
+				out_channels=out_channels,
+				stride=first_stride if i == 0 else 1,
+				**kwargs,
+			)
+		)
+		in_channels = out_channels
+	return blocks
 
 
 class BasicStem(CNNBlockBase):
@@ -366,30 +538,52 @@ class BasicStem(CNNBlockBase):
 		"""
 		super().__init__(in_channels, out_channels, 4)
 		self.in_channels = in_channels
-		self.conv1 = Conv2d(
-			in_channels,
-			out_channels,
-			kernel_size=7,
-			stride=2,
-			padding=3,
-			bias=False,
-			norm=get_norm(norm, out_channels),
+		self.conv1 = nn.Sequential(
+			Conv2d(
+				in_channels,
+				32,
+				kernel_size=3,
+				stride=2,
+				padding=1,
+				bias=False,
+				),
+			get_norm(norm, 32),
+			nn.ReLU(inplace=True),
+			Conv2d(
+				32,
+				32,
+				kernel_size=3,
+				stride=1,
+				padding=1,
+				bias=False,
+				),
+			get_norm(norm, 32),
+			nn.ReLU(inplace=True),
+			Conv2d(
+				32,
+				out_channels,
+				kernel_size=3,
+				stride=1,
+				padding=1,
+				bias=False,
+				),
 		)
-		weight_init.c2_msra_fill(self.conv1)
+		self.bn1 = get_norm(norm, out_channels)
+
+		for layer in self.conv1:
+			if isinstance(layer, Conv2d):
+				weight_init.c2_msra_fill(layer)
 
 	def forward(self, x):
 		x = self.conv1(x)
+		x = self.bn1(x)
 		x = F.relu_(x)
 		x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1)
 		return x
 
 
 class ResNet(Backbone):
-	"""
-	Implement :paper:`ResNet`.
-	"""
-
-	def __init__(self, stem, stages, num_classes=None, out_features=None, freeze_at=0):
+	def __init__(self, stem, stages, num_classes=None, out_features=None):
 		"""
 		Args:
 			stem (nn.Module): a stem module
@@ -400,10 +594,8 @@ class ResNet(Backbone):
 			out_features (list[str]): name of the layers whose outputs should
 				be returned in forward. Can be anything in "stem", "linear", or "res2" ...
 				If None, will return the output of the last layer.
-			freeze_at (int): The number of stages at the beginning to freeze.
-				see :meth:`freeze` for detailed explanation.
 		"""
-		super().__init__()
+		super(ResNet, self).__init__()
 		self.stem = stem
 		self.num_classes = num_classes
 
@@ -411,15 +603,7 @@ class ResNet(Backbone):
 		self._out_feature_strides = {"stem": current_stride}
 		self._out_feature_channels = {"stem": self.stem.out_channels}
 
-		self.stage_names, self.stages = [], []
-
-		if out_features is not None:
-			# Avoid keeping unused layers in this module. They consume extra memory
-			# and may cause allreduce to fail
-			num_stages = max(
-				[{"res2": 1, "res3": 2, "res4": 3, "res5": 4}.get(f, 0) for f in out_features]
-			)
-			stages = stages[:num_stages]
+		self.stages_and_names = []
 		for i, blocks in enumerate(stages):
 			assert len(blocks) > 0, len(blocks)
 			for block in blocks:
@@ -429,14 +613,12 @@ class ResNet(Backbone):
 			stage = nn.Sequential(*blocks)
 
 			self.add_module(name, stage)
-			self.stage_names.append(name)
-			self.stages.append(stage)
+			self.stages_and_names.append((stage, name))
 
 			self._out_feature_strides[name] = current_stride = int(
 				current_stride * np.prod([k.stride for k in blocks])
 			)
 			self._out_feature_channels[name] = curr_channels = blocks[-1].out_channels
-		self.stage_names = tuple(self.stage_names)  # Make it static for scripting
 
 		if num_classes is not None:
 			self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -455,22 +637,13 @@ class ResNet(Backbone):
 		children = [x[0] for x in self.named_children()]
 		for out_feature in self._out_features:
 			assert out_feature in children, "Available children: {}".format(", ".join(children))
-		self.freeze(freeze_at)
 
 	def forward(self, x):
-		"""
-		Args:
-			x: Tensor of shape (N,C,H,W). H, W must be a multiple of ``self.size_divisibility``.
-
-		Returns:
-			dict[str->Tensor]: names and the corresponding features
-		"""
-		assert x.dim() == 4, f"ResNet takes an input of shape (N, C, H, W). Got {x.shape} instead!"
 		outputs = {}
 		x = self.stem(x)
 		if "stem" in self._out_features:
 			outputs["stem"] = x
-		for name, stage in zip(self.stage_names, self.stages):
+		for stage, name in self.stages_and_names:
 			x = stage(x)
 			if name in self._out_features:
 				outputs[name] = x
@@ -494,152 +667,26 @@ class ResNet(Backbone):
 		"""
 		Freeze the first several stages of the ResNet. Commonly used in
 		fine-tuning.
-
-		Layers that produce the same feature map spatial size are defined as one
-		"stage" by :paper:`FPN`.
-
 		Args:
-			freeze_at (int): number of stages to freeze.
+			freeze_at (int): number of stem and stages to freeze.
 				`1` means freezing the stem. `2` means freezing the stem and
-				one residual stage, etc.
-
+				the first stage, etc.
 		Returns:
 			nn.Module: this ResNet itself
 		"""
 		if freeze_at >= 1:
 			self.stem.freeze()
-		for idx, stage in enumerate(self.stages, start=2):
+		for idx, (stage, _) in enumerate(self.stages_and_names, start=2):
 			if freeze_at >= idx:
 				for block in stage.children():
 					block.freeze()
 		return self
 
-	@staticmethod
-	def make_stage(block_class, num_blocks, *, in_channels, out_channels, **kwargs):
-		"""
-		Create a list of blocks of the same type that forms one ResNet stage.
-
-		Args:
-			block_class (type): a subclass of CNNBlockBase that's used to create all blocks in this
-				stage. A module of this type must not change spatial resolution of inputs unless its
-				stride != 1.
-			num_blocks (int): number of blocks in this stage
-			in_channels (int): input channels of the entire stage.
-			out_channels (int): output channels of **every block** in the stage.
-			kwargs: other arguments passed to the constructor of
-				`block_class`. If the argument name is "xx_per_block", the
-				argument is a list of values to be passed to each block in the
-				stage. Otherwise, the same argument is passed to every block
-				in the stage.
-
-		Returns:
-			list[CNNBlockBase]: a list of block module.
-
-		Examples:
-		::
-			stage = ResNet.make_stage(
-				BottleneckBlock, 3, in_channels=16, out_channels=64,
-				bottleneck_channels=16, num_groups=1,
-				stride_per_block=[2, 1, 1],
-				dilations_per_block=[1, 1, 2]
-			)
-
-		Usually, layers that produce the same feature map spatial size are defined as one
-		"stage" (in :paper:`FPN`). Under such definition, ``stride_per_block[1:]`` should
-		all be 1.
-		"""
-		blocks = []
-		for i in range(num_blocks):
-			curr_kwargs = {}
-			for k, v in kwargs.items():
-				if k.endswith("_per_block"):
-					assert len(v) == num_blocks, (
-						f"Argument '{k}' of make_stage should have the "
-						f"same length as num_blocks={num_blocks}."
-					)
-					newk = k[: -len("_per_block")]
-					assert newk not in kwargs, f"Cannot call make_stage with both {k} and {newk}!"
-					curr_kwargs[newk] = v[i]
-				else:
-					curr_kwargs[k] = v
-
-			blocks.append(
-				block_class(in_channels=in_channels, out_channels=out_channels, **curr_kwargs)
-			)
-			in_channels = out_channels
-		return blocks
-
-	@staticmethod
-	def make_default_stages(depth, block_class=None, **kwargs):
-		"""
-		Created list of ResNet stages from pre-defined depth (one of 18, 34, 50, 101, 152).
-		If it doesn't create the ResNet variant you need, please use :meth:`make_stage`
-		instead for fine-grained customization.
-
-		Args:
-			depth (int): depth of ResNet
-			block_class (type): the CNN block class. Has to accept
-				`bottleneck_channels` argument for depth > 50.
-				By default it is BasicBlock or BottleneckBlock, based on the
-				depth.
-			kwargs:
-				other arguments to pass to `make_stage`. Should not contain
-				stride and channels, as they are predefined for each depth.
-
-		Returns:
-			list[list[CNNBlockBase]]: modules in all stages; see arguments of
-				:class:`ResNet.__init__`.
-		"""
-		num_blocks_per_stage = {
-			18: [2, 2, 2, 2],
-			34: [3, 4, 6, 3],
-			50: [3, 4, 6, 3],
-			101: [3, 4, 23, 3],
-			152: [3, 8, 36, 3],
-		}[depth]
-		if block_class is None:
-			block_class = BasicBlock if depth < 50 else BottleneckBlock
-		if depth < 50:
-			in_channels = [64, 64, 128, 256]
-			out_channels = [64, 128, 256, 512]
-		else:
-			in_channels = [64, 256, 512, 1024]
-			out_channels = [256, 512, 1024, 2048]
-		ret = []
-		for (n, s, i, o) in zip(num_blocks_per_stage, [1, 2, 2, 2], in_channels, out_channels):
-			if depth >= 50:
-				kwargs["bottleneck_channels"] = o // 4
-			ret.append(
-				ResNet.make_stage(
-					block_class=block_class,
-					num_blocks=n,
-					stride_per_block=[s] + [1] * (n - 1),
-					in_channels=i,
-					out_channels=o,
-					**kwargs,
-				)
-			)
-		return ret
-
-
-ResNetBlockBase = CNNBlockBase
-"""
-Alias for backward compatibiltiy.
-"""
-
-
-def make_stage(*args, **kwargs):
-	"""
-	Deprecated alias for backward compatibiltiy.
-	"""
-	return ResNet.make_stage(*args, **kwargs)
-
 
 @BACKBONE_REGISTRY.register()
 def build_resnet_backbone(cfg, input_shape):
 	"""
-	Create a ResNet instance from config.
-
+	Create a Res2Net instance from config.
 	Returns:
 		ResNet: a :class:`ResNet` instance.
 	"""
@@ -657,7 +704,8 @@ def build_resnet_backbone(cfg, input_shape):
 	depth			   = cfg.MODEL.RESNETS.DEPTH
 	num_groups		  = cfg.MODEL.RESNETS.NUM_GROUPS
 	width_per_group	 = cfg.MODEL.RESNETS.WIDTH_PER_GROUP
-	bottleneck_channels = num_groups * width_per_group
+	scale			  = cfg.MODEL.RESNETS.SCALE
+	bottleneck_channels = num_groups * width_per_group * scale
 	in_channels		 = cfg.MODEL.RESNETS.STEM_OUT_CHANNELS
 	out_channels		= cfg.MODEL.RESNETS.RES2_OUT_CHANNELS
 	stride_in_1x1	   = cfg.MODEL.RESNETS.STRIDE_IN_1X1
@@ -686,13 +734,16 @@ def build_resnet_backbone(cfg, input_shape):
 
 	stages = []
 
-	for idx, stage_idx in enumerate(range(2, 6)):
-		# res5_dilation is used this way as a convention in R-FCN & Deformable Conv paper
+	# Avoid creating variables without gradients
+	# It consumes extra memory and may cause allreduce to fail
+	out_stage_idx = [{"res2": 2, "res3": 3, "res4": 4, "res5": 5}[f] for f in out_features]
+	max_stage_idx = max(out_stage_idx)
+	for idx, stage_idx in enumerate(range(2, max_stage_idx + 1)):
 		dilation = res5_dilation if stage_idx == 5 else 1
 		first_stride = 1 if idx == 0 or (stage_idx == 5 and dilation == 2) else 2
 		stage_kargs = {
 			"num_blocks": num_blocks_per_stage[idx],
-			"stride_per_block": [first_stride] + [1] * (num_blocks_per_stage[idx] - 1),
+			"first_stride": first_stride,
 			"in_channels": in_channels,
 			"out_channels": out_channels,
 			"norm": norm,
@@ -705,15 +756,17 @@ def build_resnet_backbone(cfg, input_shape):
 			stage_kargs["stride_in_1x1"] = stride_in_1x1
 			stage_kargs["dilation"] = dilation
 			stage_kargs["num_groups"] = num_groups
+			stage_kargs["scale"] = scale
+
 			if deform_on_per_stage[idx]:
 				stage_kargs["block_class"] = DeformBottleneckBlock
 				stage_kargs["deform_modulated"] = deform_modulated
 				stage_kargs["deform_num_groups"] = deform_num_groups
 			else:
 				stage_kargs["block_class"] = BottleneckBlock
-		blocks = ResNet.make_stage(**stage_kargs)
+		blocks = make_stage(**stage_kargs)
 		in_channels = out_channels
 		out_channels *= 2
 		bottleneck_channels *= 2
 		stages.append(blocks)
-	return ResNet(stem, stages, out_features=out_features, freeze_at=freeze_at)
+	return ResNet(stem, stages, out_features=out_features).freeze(freeze_at)
