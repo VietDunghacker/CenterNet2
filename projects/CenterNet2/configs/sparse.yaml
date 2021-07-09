@@ -43,3 +43,4 @@ INPUT:
   TEST_INPUT_TYPE: 'square'
 OUTPUT_DIR: "/content/ckpt"
 VERSION: 2
+SEED: -1
