@@ -138,6 +138,7 @@ class BottleneckBlock(CNNBlockBase):
 			dilation (int): the dilation rate of the 3x3 conv layer.
 		"""
 		super().__init__(in_channels, out_channels, stride)
+		self.with_cp = True
 
 		if in_channels != out_channels:
 			self.shortcut = Conv2d(
@@ -202,20 +203,27 @@ class BottleneckBlock(CNNBlockBase):
 		# Add it as an option when we need to use this code to train a backbone.
 
 	def forward(self, x):
-		out = self.conv1(x)
-		out = F.relu_(out)
+		def _inner_forward(x):
+			out = self.conv1(x)
+			out = F.relu_(out)
 
-		out = self.conv2(out)
-		out = F.relu_(out)
+			out = self.conv2(out)
+			out = F.relu_(out)
 
-		out = self.conv3(out)
+			out = self.conv3(out)
 
-		if self.shortcut is not None:
-			shortcut = self.shortcut(x)
+			if self.shortcut is not None:
+				shortcut = self.shortcut(x)
+			else:
+				shortcut = x
+
+			out += shortcut
+			return out
+
+		if self.with_cp and x.requires_grad:
+			out = cp.checkpoint(_inner_forward, x)
 		else:
-			shortcut = x
-
-		out += shortcut
+			out = _inner_forward(x)
 		out = F.relu_(out)
 		return out
 
