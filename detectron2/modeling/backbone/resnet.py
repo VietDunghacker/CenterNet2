@@ -87,7 +87,7 @@ class BasicBlock(CNNBlockBase):
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
-			out = F.gelu(out)
+			out = F.silu(out, inplace = True)
 			out = self.conv2(out)
 
 			if self.shortcut is not None:
@@ -103,7 +103,7 @@ class BasicBlock(CNNBlockBase):
 		else:
 			out = _inner_forward(x)
 
-		out = F.gelu(out)
+		out = F.relu_(out)
 		return out
 
 
@@ -205,10 +205,10 @@ class BottleneckBlock(CNNBlockBase):
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
-			out = F.gelu(out)
+			out = F.relu_(out)
 
 			out = self.conv2(out)
-			out = F.gelu(out)
+			out = F.relu_(out)
 
 			out = self.conv3(out)
 
@@ -224,7 +224,7 @@ class BottleneckBlock(CNNBlockBase):
 			out = cp.checkpoint(_inner_forward, x)
 		else:
 			out = _inner_forward(x)
-		out = F.gelu(out)
+		out = F.relu_(out)
 		return out
 
 
@@ -322,7 +322,7 @@ class DeformBottleneckBlock(CNNBlockBase):
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
-			out = F.gelu(out)
+			out = F.relu_(out)
 
 			if self.deform_modulated:
 				offset_mask = self.conv2_offset(out)
@@ -333,7 +333,7 @@ class DeformBottleneckBlock(CNNBlockBase):
 			else:
 				offset = self.conv2_offset(out)
 				out = self.conv2(out, offset)
-			out = F.gelu(out)
+			out = F.relu_(out)
 
 			out = self.conv3(out)
 
@@ -349,7 +349,7 @@ class DeformBottleneckBlock(CNNBlockBase):
 			out = cp.checkpoint(_inner_forward, x)
 		else:
 			out = _inner_forward(x)
-		out = F.gelu(out)
+		out = F.relu_(out)
 		return out
 
 
@@ -379,7 +379,7 @@ class BasicStem(CNNBlockBase):
 
 	def forward(self, x):
 		x = self.conv1(x)
-		x = F.gelu(x)
+		x = F.relu_(x)
 		x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1)
 		return x
 
