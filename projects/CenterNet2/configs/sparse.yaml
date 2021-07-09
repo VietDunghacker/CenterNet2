@@ -3,14 +3,14 @@ MODEL:
   WEIGHTS: "/gdrive/My Drive/data/r101_300pro_3x_model.pth"
   RESNETS:
     STRIDE_IN_1X1: False  # this is a C2 model
-    NUM_GROUPS: 32
-    WIDTH_PER_GROUP: 8
+    NUM_GROUPS: 64
+    WIDTH_PER_GROUP: 4
     DEPTH: 101
     DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
     DEFORM_MODULATED: True
   PIXEL_STD: [57.375, 57.120, 58.395]
   ROI_HEADS:
-    SCORE_THRESH_TEST: 0.001
+    SCORE_THRESH_TEST: 0.05
   SparseRCNN:
     NUM_PROPOSALS: 10
     NUM_CLASSES: 22
