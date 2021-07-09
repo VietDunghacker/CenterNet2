@@ -196,23 +196,18 @@ def do_train(cfg, model, resume=False):
 				model.train()
 
 				if cfg.DATALOADER.SAMPLER_TRAIN == "ClassAwareSampler":
-					if test_result['bbox']['AP'] / (last_map + 1e-6) <= 1.01:
-						data_loader.batch_sampler.sampler.cw = copy.deepcopy(cw)
-						logger.info("Reset weight")
-					else:
-						maps = []
-						for name in classes:
-							maps.append(test_result['bbox']['AP-{}'.format(name)])
-						maps = np.array(maps)
+					maps = []
+					for name in classes:
+						maps.append(test_result['bbox']['AP-{}'.format(name)])
+					maps = np.array(maps)
 
-						data_loader.batch_sampler.sampler.cw = cw * ((1 - maps / 100 + 1e-6) ** 2)
-						data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
+					data_loader.batch_sampler.sampler.cw = cw * ((1 - maps / 100 + 1e-6) ** 2)
+					data_loader.batch_sampler.sampler.cw /= sum(data_loader.batch_sampler.sampler.cw)
 
-						txt = "New weight:\n"
-						for i, name in enumerate(classes):
-							txt += "{:40s}: {:6f}\n".format(name, data_loader.batch_sampler.sampler.cw[i])
-						logger.info(txt)
-					last_map = test_result['bbox']['AP']
+					txt = "New weight:\n"
+					for i, name in enumerate(classes):
+						txt += "{:40s}: {:6f}\n".format(name, data_loader.batch_sampler.sampler.cw[i])
+					logger.info(txt)
 
 				comm.synchronize()
 
