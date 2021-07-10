@@ -72,9 +72,9 @@ class SetCriterion(nn.Module):
 		logger.info(str(src_boxes.shape))
 		
 		target_boxes_o = torch.cat([t['boxes_xyxy'][i] for t, (_, i) in zip(targets, indices)], dim=0)
+		logger.info(str(target_boxes_o.shape))
 		target_boxes = torch.full(src_boxes.shape[:2], 0, dtype=torch.int64, device=src_logits.device)
 		target_boxes[idx] = target_boxes_o
-		logger.info(str(target_boxes.shape))
 
 		if self.use_focal:
 			src_logits = src_logits.flatten(0, 1)
