@@ -46,9 +46,9 @@ def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduc
 	pred_sigmoid = pred.sigmoid()
 	target = target.type_as(pred)
 	if iou_weighted:
-		focal_weight = target * (target < num_classes).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target >= num_classes).float()
+		focal_weight = target * (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
 	else:
-		focal_weight = (target < num_classes).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target >= num_classes).float()
+		focal_weight = (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
 	loss = F.binary_cross_entropy_with_logits(pred, target, reduction='none') * focal_weight
 	if reduction == 'sum':
 		return loss.sum()
@@ -128,6 +128,9 @@ class SetCriterion(nn.Module):
 
 			# comp focal loss.
 			vf_loss = varifocal_loss(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", num_classes = self.num_classes) / num_boxes
+			print_log(str(vf_loss))
+			print_log(str((1 - pos_ious).sum()))
+			assert(1 == 0)
 			losses = {'varifocal_loss': vf_loss}
 		else:
 			loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
