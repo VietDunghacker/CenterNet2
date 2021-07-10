@@ -79,10 +79,10 @@ class SetCriterion(nn.Module):
 			pos_classes = target_classes[pos_inds]
 			logger.info(str(src_logits.shape))
 			logger.info(str(pos_classes.shape))
-			logger.info(str(pos_src_boxes.shape))			
-			logger.info(str(pos_target_boxes.shape))
+			logger.info(str(pos_src_boxes))			
+			logger.info(str(pos_target_boxes))
 
-			iou_targets = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes.detach()).clamp(min = 1e-6)
+			pos_ious = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes).clamp(min = 1e-6).detach()
 			logger.info(str(iou_targets))
 			
 			labels = torch.zeros_like(src_logits)
