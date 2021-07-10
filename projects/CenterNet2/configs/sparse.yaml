@@ -4,7 +4,6 @@ MODEL:
     NAME: "build_resnet_bifpn_backbone"
   WEIGHTS: "/gdrive/My Drive/data/r101_300pro_3x_model.pth"
   RESNETS:
-    STRIDE_IN_1X1: False
     SCALE: 4
     WIDTH_PER_GROUP: 26
     DEPTH: 101
