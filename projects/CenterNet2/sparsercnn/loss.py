@@ -60,14 +60,17 @@ class SetCriterion(nn.Module):
 		"""
 		assert 'pred_logits' in outputs
 		src_logits = outputs['pred_logits']
+		logger.info(str(src_logits.shape))
 
 		idx = self._get_src_permutation_idx(indices)
 		target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
 		target_classes = torch.full(src_logits.shape[:2], self.num_classes, dtype=torch.int64, device=src_logits.device)
 		target_classes[idx] = target_classes_o
+		logger.info(str(target_classes.shape))
 
-		src_boxes = outputs['pred_boxes'][idx]
-		target_boxes = torch.cat([t['boxes_xyxy'][i] for t, (_, i) in zip(targets, indices)], dim=0)
+		src_boxes = outputs['pred_boxes']
+		logger.info(str(src_boxes.shape))
+		#target_boxes = torch.cat([t['boxes_xyxy'][i] for t, (_, i) in zip(targets, indices)], dim=0)
 
 		if self.use_focal:
 			src_logits = src_logits.flatten(0, 1)
@@ -77,11 +80,12 @@ class SetCriterion(nn.Module):
 
 			#src_boxes = src_boxes.flatten(0, 1)
 			#target_boxes = target_boxes.flatten(0, 1)
+			'''
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
 			logger.info(str(src_logits.shape))
-			logger.info(str(pos_src_boxes.shape))			
-			logger.info(str(pos_target_boxes.shape))
+			logger.info(str(pos_src_boxes.shape))
+			logger.info(str(pos_target_boxes.shape))'''
 
 			#pos_ious = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes).clamp(min = 1e-6).detach()
 			#logger.info(str(pos_ious))
