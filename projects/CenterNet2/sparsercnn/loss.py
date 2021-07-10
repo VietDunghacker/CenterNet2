@@ -29,7 +29,7 @@ def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduc
 		pred (torch.Tensor): The prediction with shape (N, C), C is the
 			number of classes
 		target (torch.Tensor): The learning target of the iou-aware
-			classification score with shape (N,).
+			classification score with shape (N, C).
 		alpha (float, optional): A balance factor for the negative part of
 			Varifocal Loss, which is different from the alpha of Focal Loss.
 			Defaults to 0.75.
@@ -50,7 +50,7 @@ def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduc
 	else:
 		focal_weight = (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
 	loss = F.binary_cross_entropy_with_logits(pred, target, reduction='none') * focal_weight
-	return loss
+	return loss.sum()
 
 
 class SetCriterion(nn.Module):
@@ -115,20 +115,18 @@ class SetCriterion(nn.Module):
 
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
-			logger.info(str(pos_src_boxes))
-			logger.info(str(pos_target_boxes))
 
 			pos_ious = torch.diagonal(torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes)).clamp(min = 1e-6).detach()
 			logger.info(str(pos_ious))
 
 			labels = torch.zeros_like(src_logits)
 			labels[pos_inds, pos_classes] = pos_ious
-			logger.info(str(labels.shape))
 			logger.info(str(labels[torch.nonzero(labels, as_tuple = True)[0]]))
-			assert(1 == 0)
 			# comp focal loss.
-			class_loss = sigmoid_focal_loss_jit(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", ) / num_boxes
-			losses = {'loss_ce': class_loss}
+			class_loss = varifocal_loss(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", ) / num_boxes
+			logger.info(class_loss)
+			assert(1 == 0)
+			losses = {'varifocal_loss': class_loss}
 		else:
 			loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
 			losses = {'loss_ce': loss_ce}
