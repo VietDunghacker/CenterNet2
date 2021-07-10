@@ -80,7 +80,6 @@ class SetCriterion(nn.Module):
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
 			logger.info(str(src_logits.shape))
-			logger.info(str(pos_classes.shape))
 			logger.info(str(pos_src_boxes.shape))			
 			logger.info(str(pos_target_boxes.shape))
 
