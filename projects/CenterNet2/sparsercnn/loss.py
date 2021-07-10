@@ -74,6 +74,9 @@ class SetCriterion(nn.Module):
 			# prepare one_hot target.
 			target_classes = target_classes.flatten(0, 1)
 			pos_inds = torch.nonzero(target_classes != self.num_classes, as_tuple=True)[0]
+
+			src_boxes = src_boxes.flatten(0, 1)
+			target_boxes = target_boxes.flatten(0, 1)
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
 			pos_classes = target_classes[pos_inds]
