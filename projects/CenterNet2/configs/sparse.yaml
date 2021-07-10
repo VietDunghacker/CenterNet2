@@ -5,7 +5,7 @@ MODEL:
     STRIDE_IN_1X1: False
     NUM_GROUPS: 4
     SCALE: 4
-    WIDTH_PER_GROUP: 24
+    WIDTH_PER_GROUP: 26
     DEPTH: 101
     DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
     DEFORM_MODULATED: True
