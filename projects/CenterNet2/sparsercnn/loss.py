@@ -74,16 +74,16 @@ class SetCriterion(nn.Module):
 			# prepare one_hot target.
 			target_classes = target_classes.flatten(0, 1)
 			pos_inds = torch.nonzero(target_classes != self.num_classes, as_tuple=True)[0]
+			pos_classes = target_classes[pos_inds]
 
 			src_boxes = src_boxes.flatten(0, 1)
 			target_boxes = target_boxes.flatten(0, 1)
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
-			pos_classes = target_classes[pos_inds]
 			logger.info(str(src_logits.shape))
 			logger.info(str(pos_classes.shape))
-			logger.info(str(pos_src_boxes))			
-			logger.info(str(pos_target_boxes))
+			logger.info(str(pos_src_boxes.shape))			
+			logger.info(str(pos_target_boxes.shape))
 
 			#pos_ious = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes).clamp(min = 1e-6).detach()
 			#logger.info(str(pos_ious))
