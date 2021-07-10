@@ -42,7 +42,6 @@ def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduc
 			"sum".
 	"""
 	# pred and target should be of the same size
-	target = F.one_hot(target)
 	assert pred.size() == target.size()
 	pred_sigmoid = pred.sigmoid()
 	target = target.type_as(pred)
@@ -121,11 +120,11 @@ class SetCriterion(nn.Module):
 
 			pos_ious = torch.diagonal(torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes)).clamp(min = 1e-6).detach()
 			logger.info(str(pos_ious))
-						
+
 			labels = torch.zeros_like(src_logits)
 			labels[pos_inds, pos_classes] = pos_ious
 			logger.info(str(labels.shape))
-			logger.info(str(labels[torch.nonzero(labels)]))
+			logger.info(str(labels[torch.nonzero(labels, as_tuple = True)[0]]))
 			assert(1 == 0)
 			# comp focal loss.
 			class_loss = sigmoid_focal_loss_jit(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", ) / num_boxes
