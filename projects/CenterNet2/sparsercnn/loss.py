@@ -116,12 +116,15 @@ class SetCriterion(nn.Module):
 
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
+			logger.info(str(pos_src_boxes))
+			logger.info(str(pos_target_boxes))
 
 			pos_ious = torch.diagonal(torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes)).clamp(min = 1e-6).detach()
 			logger.info(str(pos_ious))
-			
+						
 			labels = torch.zeros_like(src_logits)
 			labels[pos_inds, pos_classes] = pos_ious
+			logger.info(str(labels.shape))
 			logger.info(str(labels[torch.nonzero(labels)]))
 			assert(1 == 0)
 			# comp focal loss.
