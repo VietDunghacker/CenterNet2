@@ -7,7 +7,6 @@
 SparseRCNN model and criterion classes.
 """
 import torch
-import torchvision
 import torch.nn.functional as F
 from torch import nn
 from fvcore.nn import sigmoid_focal_loss_jit
@@ -19,43 +18,6 @@ from .util.misc import (NestedTensor, nested_tensor_from_tensor_list,
 from .util.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
 
 from scipy.optimize import linear_sum_assignment
-import logging
-
-logger = logging.getLogger("detectron2")
-
-def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduction='mean', num_classes = 80):
-	"""`Varifocal Loss <https://arxiv.org/abs/2008.13367>`_
-	Args:
-		pred (torch.Tensor): The prediction with shape (N, C), C is the
-			number of classes
-		target (torch.Tensor): The learning target of the iou-aware
-			classification score with shape (N, C).
-		alpha (float, optional): A balance factor for the negative part of
-			Varifocal Loss, which is different from the alpha of Focal Loss.
-			Defaults to 0.75.
-		gamma (float, optional): The gamma for calculating the modulating
-			factor. Defaults to 2.0.
-		iou_weighted (bool, optional): Whether to weight the loss of the
-			positive example with the iou target. Defaults to True.
-		reduction (str, optional): The method used to reduce the loss into
-			a scalar. Defaults to 'mean'. Options are "none", "mean" and
-			"sum".
-	"""
-	# pred and target should be of the same size
-	assert pred.size() == target.size()
-	pred_sigmoid = pred.sigmoid()
-	target = target.type_as(pred)
-	if iou_weighted:
-		focal_weight = target * (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
-	else:
-		focal_weight = (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
-	loss = F.binary_cross_entropy_with_logits(pred, target, reduction='none') * focal_weight
-	if reduction == 'sum':
-		return loss.sum()
-	elif reduction == 'mean':
-		return loss.mean()
-	else:
-		return loss
 
 
 class SetCriterion(nn.Module):
@@ -98,38 +60,26 @@ class SetCriterion(nn.Module):
 
 		idx = self._get_src_permutation_idx(indices)
 		target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
-		target_classes = torch.full(src_logits.shape[:2], self.num_classes, dtype=torch.int64, device=src_logits.device)
+		target_classes = torch.full(src_logits.shape[:2], self.num_classes,
+									dtype=torch.int64, device=src_logits.device)
 		target_classes[idx] = target_classes_o
-
-		src_boxes = outputs['pred_boxes']
-		
-		target_boxes_o = torch.cat([t['boxes_xyxy'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-		target_boxes = torch.zeros_like(src_boxes, device=src_logits.device)
-		target_boxes[idx] = target_boxes_o
 
 		if self.use_focal:
 			src_logits = src_logits.flatten(0, 1)
 			# prepare one_hot target.
 			target_classes = target_classes.flatten(0, 1)
 			pos_inds = torch.nonzero(target_classes != self.num_classes, as_tuple=True)[0]
-
-			pos_classes = target_classes[pos_inds]
-
-			src_boxes = src_boxes.flatten(0, 1)
-			target_boxes = target_boxes.flatten(0, 1)
-
-			pos_src_boxes = src_boxes[pos_inds]
-			pos_target_boxes = target_boxes[pos_inds]
-
-			pos_ious = torch.diagonal(torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes)).clamp(min = 1e-6).detach()
-			logger.info(pos_ious)
-
 			labels = torch.zeros_like(src_logits)
-			labels[pos_inds, pos_classes] = pos_ious
-
+			labels[pos_inds, target_classes[pos_inds]] = 1
 			# comp focal loss.
-			vf_loss = varifocal_loss(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", num_classes = self.num_classes) / num_boxes
-			losses = {'varifocal_loss': vf_loss}
+			class_loss = sigmoid_focal_loss_jit(
+				src_logits,
+				labels,
+				alpha=self.focal_loss_alpha,
+				gamma=self.focal_loss_gamma,
+				reduction="sum",
+			) / num_boxes
+			losses = {'loss_ce': class_loss}
 		else:
 			loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
 			losses = {'loss_ce': loss_ce}
@@ -152,14 +102,14 @@ class SetCriterion(nn.Module):
 
 		losses = {}
 		loss_giou = 1 - torch.diag(box_ops.generalized_box_iou(src_boxes, target_boxes))
-		losses['giou_loss'] = loss_giou.sum() / num_boxes
+		losses['loss_giou'] = loss_giou.sum() / num_boxes
 
 		image_size = torch.cat([v["image_size_xyxy_tgt"] for v in targets])
 		src_boxes_ = src_boxes / image_size
 		target_boxes_ = target_boxes / image_size
 
 		loss_bbox = F.l1_loss(src_boxes_, target_boxes_, reduction='none')
-		losses['bbox_loss'] = loss_bbox.sum() / num_boxes
+		losses['loss_bbox'] = loss_bbox.sum() / num_boxes
 
 		return losses
 
@@ -230,7 +180,6 @@ class SetCriterion(nn.Module):
 
 class HungarianMatcher(nn.Module):
 	"""This class computes an assignment between the targets and the predictions of the network
-
 	For efficiency reasons, the targets don't include the no_object. Because of this, in general,
 	there are more predictions than targets. In this case, we do a 1-to-1 matching of the best predictions,
 	while the others are un-matched (and thus treated as non-objects).
@@ -238,8 +187,7 @@ class HungarianMatcher(nn.Module):
 
 	def __init__(self, cfg, cost_class: float = 1, cost_bbox: float = 1, cost_giou: float = 1, use_focal: bool = False):
 		"""Creates the matcher
-
-		Params:	
+		Params:
 			cost_class: This is the relative weight of the classification error in the matching cost
 			cost_bbox: This is the relative weight of the L1 error of the bounding box coordinates in the matching cost
 			cost_giou: This is the relative weight of the giou loss of the bounding box in the matching cost
@@ -257,17 +205,14 @@ class HungarianMatcher(nn.Module):
 	@torch.no_grad()
 	def forward(self, outputs, targets):
 		""" Performs the matching
-
 		Params:
 			outputs: This is a dict that contains at least these entries:
 				 "pred_logits": Tensor of dim [batch_size, num_queries, num_classes] with the classification logits
 				 "pred_boxes": Tensor of dim [batch_size, num_queries, 4] with the predicted box coordinates
-
 			targets: This is a list of targets (len(targets) = batch_size), where each target is a dict containing:
 				 "labels": Tensor of dim [num_target_boxes] (where num_target_boxes is the number of ground-truth
 						   objects in the target) containing the class labels
 				 "boxes": Tensor of dim [num_target_boxes, 4] containing the target box coordinates
-
 		Returns:
 			A list of size batch_size, containing tuples of (index_i, index_j) where:
 				- index_i is the indices of the selected predictions (in order)
