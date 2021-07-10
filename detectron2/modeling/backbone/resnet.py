@@ -117,20 +117,7 @@ class BottleneckBlock(CNNBlockBase):
 	The standard bottle2neck residual block used by Res2Net-50, 101 and 152.
 	"""
 
-	def __init__(
-		self,
-		in_channels,
-		out_channels,
-		*,
-		bottleneck_channels,
-		stride=1,
-		num_groups=1,
-		norm="BN",
-		stride_in_1x1=False,
-		dilation=1,
-		basewidth=26, 
-		scale=4,
-	):
+	def __init__(self, in_channels, out_channels, *, bottleneck_channels, stride=1, num_groups=1, norm="BN", stride_in_1x1=False, dilation=1, basewidth=26,  scale=4,):
 		"""
 		Args:
 			bottleneck_channels (int): number of output channels for the 3x3
@@ -147,8 +134,7 @@ class BottleneckBlock(CNNBlockBase):
 
 		if in_channels != out_channels:
 			self.shortcut = nn.Sequential(
-				nn.AvgPool2d(kernel_size=stride, stride=stride, 
-					ceil_mode=True, count_include_pad=False),
+				nn.AvgPool2d(kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False),
 				Conv2d(
 					in_channels,
 					out_channels,
@@ -179,7 +165,7 @@ class BottleneckBlock(CNNBlockBase):
 		  self.nums = 1
 		else:
 		  self.nums = scale -1
-		if self.in_channels!=self.out_channels and stride_3x3!=2:
+		if self.in_channels != self.out_channels and stride_3x3 != 2:
 			self.pool = nn.AvgPool2d(kernel_size=3, stride = stride_3x3, padding=1)
 
 		convs = []
@@ -242,7 +228,7 @@ class BottleneckBlock(CNNBlockBase):
 
 			spx = torch.split(out, self.width, 1)
 			for i in range(self.nums):
-				if i==0 or self.in_channels!=self.out_channels:
+				if i == 0 or self.in_channels != self.out_channels:
 					sp = spx[i]
 				else:
 					sp = sp + spx[i]
