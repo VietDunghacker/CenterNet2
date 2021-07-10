@@ -23,7 +23,7 @@ import logging
 
 logger = logging.getLogger("detectron2")
 
-def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduction='mean'):
+def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduction='mean', num_classes = 80):
 	"""`Varifocal Loss <https://arxiv.org/abs/2008.13367>`_
 	Args:
 		pred (torch.Tensor): The prediction with shape (N, C), C is the
@@ -46,9 +46,9 @@ def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduc
 	pred_sigmoid = pred.sigmoid()
 	target = target.type_as(pred)
 	if iou_weighted:
-		focal_weight = target * (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
+		focal_weight = target * (target < num_classes).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target >= num_classes).float()
 	else:
-		focal_weight = (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
+		focal_weight = (target < num_classes).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target >= num_classes).float()
 	loss = F.binary_cross_entropy_with_logits(pred, target, reduction='none') * focal_weight
 	if reduction == 'sum':
 		return loss.sum()
@@ -127,7 +127,7 @@ class SetCriterion(nn.Module):
 			labels[pos_inds, pos_classes] = pos_ious
 
 			# comp focal loss.
-			vf_loss = varifocal_loss(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", ) / num_boxes
+			vf_loss = varifocal_loss(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", num_classes = self.num_classes) / num_boxes
 			losses = {'varifocal_loss': vf_loss}
 		else:
 			loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
