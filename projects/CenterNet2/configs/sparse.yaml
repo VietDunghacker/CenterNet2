@@ -1,20 +1,14 @@
 _BASE_: "Base-SparseRCNN.yaml"
 MODEL:
-  BACKBONE:
-    NAME: "build_resnet_bifpn_backbone"
   WEIGHTS: "/gdrive/My Drive/data/r101_300pro_3x_model.pth"
   RESNETS:
     SCALE: 4
-    WIDTH_PER_GROUP: 26
+    NUM_GROUPS: 9
+    WIDTH_PER_GROUP: 27
     DEPTH: 101
     DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
     DEFORM_MODULATED: True
   PIXEL_STD: [57.375, 57.120, 58.395]
-  BIFPN:
-    NUM_BIFPN: 5
-    NUM_LEVELS: 4
-    OUT_CHANNELS: 256
-    NORM: 'GN'
   ROI_BOX_HEAD:
     NORM: 'GN'
   ROI_HEADS:
