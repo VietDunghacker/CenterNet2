@@ -238,9 +238,9 @@ class BottleneckBlock(CNNBlockBase):
 					out = sp
 				else:
 					out = torch.cat((out, sp), 1)
-			if self.scale!=1 and self.stride_3x3==1:
+			if self.scale!=1 and self.stride_3x3 == 1:
 				out = torch.cat((out, spx[self.nums]), 1)
-			elif self.scale != 1 and self.stride_3x3==2:
+			elif self.scale != 1 and self.stride_3x3 == 2:
 				out = torch.cat((out, self.pool(spx[self.nums])), 1)
 
 			out = self.conv3(out)
@@ -288,17 +288,8 @@ class DeformBottleneckBlock(ResNetBlockBase):
 		self.deform_modulated = deform_modulated
 
 		if in_channels != out_channels:
-			# self.shortcut = Conv2d(
-			#	in_channels,
-			#	out_channels,
-			#	kernel_size=1,
-			#	stride=stride,
-			#	bias=False,
-			#	norm=get_norm(norm, out_channels),
-			# )
 			self.shortcut = nn.Sequential(
-				nn.AvgPool2d(kernel_size=stride, stride=stride, 
-					ceil_mode=True, count_include_pad=False),
+				nn.AvgPool2d(kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False),
 				Conv2d(
 					in_channels,
 					out_channels,
@@ -338,52 +329,12 @@ class DeformBottleneckBlock(ResNetBlockBase):
 			deform_conv_op = DeformConv
 			offset_channels = 18
 
-		# self.conv2_offset = Conv2d(
-		#	bottleneck_channels,
-		#	offset_channels * deform_num_groups,
-		#	kernel_size=3,
-		#	stride=stride_3x3,
-		#	padding=1 * dilation,
-		#	dilation=dilation,
-		# )
-		# self.conv2 = deform_conv_op(
-		#	bottleneck_channels,
-		#	bottleneck_channels,
-		#	kernel_size=3,
-		#	stride=stride_3x3,
-		#	padding=1 * dilation,
-		#	bias=False,
-		#	groups=num_groups,
-		#	dilation=dilation,
-		#	deformable_groups=deform_num_groups,
-		#	norm=get_norm(norm, bottleneck_channels),
-		# )
-
 		conv2_offsets = []
 		convs = []
 		bns = []
 		for i in range(self.nums):
-			conv2_offsets.append(Conv2d(
-							width, 
-							offset_channels * deform_num_groups, 
-							kernel_size=3, 
-							stride=stride_3x3, 
-							padding=1 * dilation, 
-							bias=False,
-							groups=num_groups,
-							dilation=dilation,
-							))
-			convs.append(deform_conv_op(
-							width, 
-							width, 
-							kernel_size=3, 
-							stride=stride_3x3, 
-							padding=1 * dilation, 
-							bias=False,
-							groups=num_groups,
-							dilation=dilation,
-							deformable_groups=deform_num_groups,
-							))
+			conv2_offsets.append(Conv2d(width, offset_channels * deform_num_groups, kernel_size=3, stride=stride_3x3, padding=1 * dilation,bias=False, groups=num_groups, dilation=dilation, ))
+			convs.append(deform_conv_op(width, width, kernel_size=3, stride=stride_3x3, padding=1 * dilation, bias=False, groups=num_groups, dilation=dilation, deformable_groups=deform_num_groups, ))
 			bns.append(get_norm(norm, width))
 		self.conv2_offsets = nn.ModuleList(conv2_offsets)
 		self.convs = nn.ModuleList(convs)
@@ -430,17 +381,6 @@ class DeformBottleneckBlock(ResNetBlockBase):
 			out = self.conv1(x)
 			out = F.silu(out, inplace = True)
 
-			# if self.deform_modulated:
-			#	offset_mask = self.conv2_offset(out)
-			#	offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
-			#	offset = torch.cat((offset_x, offset_y), dim=1)
-			#	mask = mask.sigmoid()
-			#	out = self.conv2(out, offset, mask)
-			# else:
-			#	offset = self.conv2_offset(out)
-			#	out = self.conv2(out, offset)
-			# out = F.silu(out, inplace = True)
-
 			spx = torch.split(out, self.width, 1)
 			for i in range(self.nums):
 				if i==0 or self.in_channels!=self.out_channels:
@@ -463,9 +403,9 @@ class DeformBottleneckBlock(ResNetBlockBase):
 					out = sp
 				else:
 					out = torch.cat((out, sp), 1)
-			if self.scale !=1 and self.stride_3x3==1:
+			if self.scale !=1 and self.stride_3x3 == 1:
 				out = torch.cat((out, spx[self.nums]), 1)
-			elif self.scale != 1 and self.stride_3x3==2:
+			elif self.scale != 1 and self.stride_3x3 == 2:
 				out = torch.cat((out, self.pool(spx[self.nums])), 1)
 
 			out = self.conv3(out)
@@ -526,34 +466,13 @@ class BasicStem(CNNBlockBase):
 		super().__init__(in_channels, out_channels, 4)
 		self.in_channels = in_channels
 		self.conv1 = nn.Sequential(
-			Conv2d(
-				in_channels,
-				32,
-				kernel_size=3,
-				stride=2,
-				padding=1,
-				bias=False,
-				),
+			Conv2d(in_channels, 32, kernel_size=3, stride=2, padding=1, bias=False,),
 			get_norm(norm, 32),
 			nn.ReLU(inplace=True),
-			Conv2d(
-				32,
-				32,
-				kernel_size=3,
-				stride=1,
-				padding=1,
-				bias=False,
-				),
+			Conv2d(32, 32, kernel_size=3, stride=1, padding=1, bias=False,),
 			get_norm(norm, 32),
 			nn.ReLU(inplace=True),
-			Conv2d(
-				32,
-				out_channels,
-				kernel_size=3,
-				stride=1,
-				padding=1,
-				bias=False,
-				),
+			Conv2d(32, out_channels, kernel_size=3, stride=1, padding=1, bias=False,),
 		)
 		self.bn1 = get_norm(norm, out_channels)
 

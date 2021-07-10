@@ -2,6 +2,8 @@ _BASE_: "Base-SparseRCNN.yaml"
 MODEL:
   WEIGHTS: "/gdrive/My Drive/data/r101_300pro_3x_model.pth"
   RESNETS:
+    STRIDE_IN_1X1: False
+    NUM_GROUPS: 6
     SCALE: 4
     WIDTH_PER_GROUP: 26
     DEPTH: 101
@@ -19,7 +21,7 @@ MODEL:
     NUM_PROPOSALS: 300
     NUM_CLASSES: 22
 TEST:
-  EVAL_PERIOD: 250
+  EVAL_PERIOD: 300
   DETECTIONS_PER_IMAGE: 300
 SOLVER:
   MAX_ITER: 30000
