@@ -158,7 +158,7 @@ class SetCriterion(nn.Module):
 		target_boxes_ = target_boxes / image_size
 
 		loss_bbox = F.l1_loss(src_boxes_, target_boxes_, reduction='none')
-		losses['l1_loss'] = loss_bbox.sum() / num_boxes
+		losses['bbox_loss'] = loss_bbox.sum() / num_boxes
 
 		return losses
 
