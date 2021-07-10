@@ -66,15 +66,15 @@ class SetCriterion(nn.Module):
 		target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
 		target_classes = torch.full(src_logits.shape[:2], self.num_classes, dtype=torch.int64, device=src_logits.device)
 		target_classes[idx] = target_classes_o
-		logger.info(str(target_classes.shape))
+		logger.info(str(target_classes[0]))
 
 		src_boxes = outputs['pred_boxes']
-		logger.info(str(src_boxes.shape))
+		logger.info(str(src_boxes[0]))
 		
 		target_boxes_o = torch.cat([t['boxes_xyxy'][i] for t, (_, i) in zip(targets, indices)], dim=0)
 		target_boxes = torch.zeros_like(src_boxes, device=src_logits.device)
 		target_boxes[idx] = target_boxes_o
-		logger.info(str(target_boxes.shape))
+		logger.info(str(target_boxes[0]))
 		assert(1 == 0)
 
 		if self.use_focal:
