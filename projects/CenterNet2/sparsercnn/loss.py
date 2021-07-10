@@ -29,7 +29,7 @@ def varifocal_loss(pred, target, weight=None, alpha=0.75, gamma=2.0, iou_weighte
 		pred (torch.Tensor): The prediction with shape (N, C), C is the
 			number of classes
 		target (torch.Tensor): The learning target of the iou-aware
-			classification score with shape (N, C), C is the number of classes.
+			classification score with shape (N,).
 		weight (torch.Tensor, optional): The weight of loss for each
 			prediction. Defaults to None.
 		alpha (float, optional): A balance factor for the negative part of
@@ -46,6 +46,7 @@ def varifocal_loss(pred, target, weight=None, alpha=0.75, gamma=2.0, iou_weighte
 			the loss. Defaults to None.
 	"""
 	# pred and target should be of the same size
+	target = F.one_hot(target)
 	assert pred.size() == target.size()
 	pred_sigmoid = pred.sigmoid()
 	target = target.type_as(pred)
@@ -126,7 +127,7 @@ class SetCriterion(nn.Module):
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
 
-			pos_ious = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes).clamp(min = 1e-6).detach()
+			pos_ious = torch.diagonal(torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes)).clamp(min = 1e-6).detach()
 			logger.info(str(pos_ious))
 			
 			labels = torch.zeros_like(src_logits)
