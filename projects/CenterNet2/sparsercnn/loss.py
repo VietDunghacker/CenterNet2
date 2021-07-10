@@ -125,13 +125,9 @@ class SetCriterion(nn.Module):
 
 			labels = torch.zeros_like(src_logits)
 			labels[pos_inds, pos_classes] = pos_ious
-			logger.info(pos_ious)
 
 			# comp focal loss.
 			vf_loss = varifocal_loss(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", num_classes = self.num_classes) / num_boxes
-			logger.info(str(vf_loss))
-			logger.info(str((1 - pos_ious).sum() / num_boxes))
-			assert(1 == 0)
 			losses = {'varifocal_loss': vf_loss}
 		else:
 			loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
