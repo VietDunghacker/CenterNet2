@@ -1,6 +1,6 @@
 _BASE_: "Base-SparseRCNN.yaml"
 MODEL:
-  WEIGHTS: "/gdrive/My Drive/data/r101_300pro_3x_model.pth"
+  WEIGHTS: "/gdrive/My Drive/data/r2_101.pkl"
   RESNETS:
     SCALE: 4
     WIDTH_PER_GROUP: 26
@@ -16,7 +16,7 @@ MODEL:
     SCORE_THRESH_TEST: 0.001
   SparseRCNN:
     ACTIVATION: 'silu'
-    ALPHA: 0.75
+    ALPHA: 0.25
     NUM_PROPOSALS: 100
     NUM_CLASSES: 22
 TEST:
