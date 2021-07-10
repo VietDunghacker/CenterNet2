@@ -74,7 +74,6 @@ class SetCriterion(nn.Module):
 			# prepare one_hot target.
 			target_classes = target_classes.flatten(0, 1)
 			pos_inds = torch.nonzero(target_classes != self.num_classes, as_tuple=True)[0]
-			pos_classes = target_classes[pos_inds]
 
 			#src_boxes = src_boxes.flatten(0, 1)
 			#target_boxes = target_boxes.flatten(0, 1)
@@ -89,7 +88,7 @@ class SetCriterion(nn.Module):
 			#logger.info(str(pos_ious))
 			
 			labels = torch.zeros_like(src_logits)
-			labels[pos_inds, pos_classes] = 1
+			labels[pos_inds, target_classes[pos_inds]] = 1
 			# comp focal loss.
 			class_loss = sigmoid_focal_loss_jit(
 				src_logits,
