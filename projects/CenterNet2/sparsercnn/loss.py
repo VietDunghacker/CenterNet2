@@ -122,6 +122,7 @@ class SetCriterion(nn.Module):
 			pos_target_boxes = target_boxes[pos_inds]
 
 			pos_ious = torch.diagonal(torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes)).clamp(min = 1e-6).detach()
+			logger.info(pos_ious)
 
 			labels = torch.zeros_like(src_logits)
 			labels[pos_inds, pos_classes] = pos_ious
