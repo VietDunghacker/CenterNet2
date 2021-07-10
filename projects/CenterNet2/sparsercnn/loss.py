@@ -23,6 +23,46 @@ import logging
 
 logger = logging.getLogger("detectron2")
 
+def varifocal_loss(pred, target, weight=None, alpha=0.75, gamma=2.0, iou_weighted=True, reduction='mean', avg_factor=None):
+	"""`Varifocal Loss <https://arxiv.org/abs/2008.13367>`_
+	Args:
+		pred (torch.Tensor): The prediction with shape (N, C), C is the
+			number of classes
+		target (torch.Tensor): The learning target of the iou-aware
+			classification score with shape (N, C), C is the number of classes.
+		weight (torch.Tensor, optional): The weight of loss for each
+			prediction. Defaults to None.
+		alpha (float, optional): A balance factor for the negative part of
+			Varifocal Loss, which is different from the alpha of Focal Loss.
+			Defaults to 0.75.
+		gamma (float, optional): The gamma for calculating the modulating
+			factor. Defaults to 2.0.
+		iou_weighted (bool, optional): Whether to weight the loss of the
+			positive example with the iou target. Defaults to True.
+		reduction (str, optional): The method used to reduce the loss into
+			a scalar. Defaults to 'mean'. Options are "none", "mean" and
+			"sum".
+		avg_factor (int, optional): Average factor that is used to average
+			the loss. Defaults to None.
+	"""
+	# pred and target should be of the same size
+	assert pred.size() == target.size()
+	pred_sigmoid = pred.sigmoid()
+	target = target.type_as(pred)
+	if iou_weighted:
+		focal_weight = target * (target > 0.0).float() + \
+			alpha * (pred_sigmoid - target).abs().pow(gamma) * \
+			(target <= 0.0).float()
+	else:
+		focal_weight = (target > 0.0).float() + \
+			alpha * (pred_sigmoid - target).abs().pow(gamma) * \
+			(target <= 0.0).float()
+	loss = F.binary_cross_entropy_with_logits(
+		pred, target, reduction='none') * focal_weight
+	loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
+	return loss
+
+
 class SetCriterion(nn.Module):
 	""" This class computes the loss for SparseRCNN.
 	The process happens in two steps:
@@ -60,22 +100,17 @@ class SetCriterion(nn.Module):
 		"""
 		assert 'pred_logits' in outputs
 		src_logits = outputs['pred_logits']
-		logger.info(str(src_logits.shape))
 
 		idx = self._get_src_permutation_idx(indices)
 		target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
 		target_classes = torch.full(src_logits.shape[:2], self.num_classes, dtype=torch.int64, device=src_logits.device)
 		target_classes[idx] = target_classes_o
-		logger.info(str(target_classes[0]))
 
 		src_boxes = outputs['pred_boxes']
-		logger.info(str(src_boxes[0]))
 		
 		target_boxes_o = torch.cat([t['boxes_xyxy'][i] for t, (_, i) in zip(targets, indices)], dim=0)
 		target_boxes = torch.zeros_like(src_boxes, device=src_logits.device)
 		target_boxes[idx] = target_boxes_o
-		logger.info(str(target_boxes[0]))
-		assert(1 == 0)
 
 		if self.use_focal:
 			src_logits = src_logits.flatten(0, 1)
@@ -83,28 +118,23 @@ class SetCriterion(nn.Module):
 			target_classes = target_classes.flatten(0, 1)
 			pos_inds = torch.nonzero(target_classes != self.num_classes, as_tuple=True)[0]
 
-			#src_boxes = src_boxes.flatten(0, 1)
-			#target_boxes = target_boxes.flatten(0, 1)
-			'''
+			pos_classes = target_classes[pos_inds]
+
+			src_boxes = src_boxes.flatten(0, 1)
+			target_boxes = target_boxes.flatten(0, 1)
+
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
-			logger.info(str(src_logits.shape))
-			logger.info(str(pos_src_boxes.shape))
-			logger.info(str(pos_target_boxes.shape))'''
 
-			#pos_ious = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes).clamp(min = 1e-6).detach()
-			#logger.info(str(pos_ious))
+			pos_ious = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes).clamp(min = 1e-6).detach()
+			logger.info(str(pos_ious))
 			
 			labels = torch.zeros_like(src_logits)
-			labels[pos_inds, target_classes[pos_inds]] = 1
+			labels[pos_inds, pos_classes] = pos_ious
+			logger.info(str(labels))
+			assert(1 == 0)
 			# comp focal loss.
-			class_loss = sigmoid_focal_loss_jit(
-				src_logits,
-				labels,
-				alpha=self.focal_loss_alpha,
-				gamma=self.focal_loss_gamma,
-				reduction="sum",
-			) / num_boxes
+			class_loss = sigmoid_focal_loss_jit(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", ) / num_boxes
 			losses = {'loss_ce': class_loss}
 		else:
 			loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
@@ -215,7 +245,7 @@ class HungarianMatcher(nn.Module):
 	def __init__(self, cfg, cost_class: float = 1, cost_bbox: float = 1, cost_giou: float = 1, use_focal: bool = False):
 		"""Creates the matcher
 
-		Params:    
+		Params:	
 			cost_class: This is the relative weight of the classification error in the matching cost
 			cost_bbox: This is the relative weight of the L1 error of the bounding box coordinates in the matching cost
 			cost_giou: This is the relative weight of the giou loss of the bounding box in the matching cost
