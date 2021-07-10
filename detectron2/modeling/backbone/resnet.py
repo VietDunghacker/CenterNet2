@@ -102,14 +102,13 @@ class BasicBlock(CNNBlockBase):
 				shortcut = x
 
 			out += shortcut
+			out = F.silu(out, inplace = True)
 			return out
 
 		if self.with_cp and x.requires_grad:
 			out = cp.checkpoint(_inner_forward, x)
 		else:
 			out = _inner_forward(x)
-
-		out = F.relu_(out)
 		return out
 
 class BottleneckBlock(CNNBlockBase):
@@ -251,13 +250,13 @@ class BottleneckBlock(CNNBlockBase):
 				shortcut = x
 
 			out += shortcut
+			out = F.silu(out, inplace = True)
 			return out
 
 		if self.with_cp and x.requires_grad:
 			out = cp.checkpoint(_inner_forward, x)
 		else:
-			out = _inner_forward(x)		
-		out = F.relu_(out)
+			out = _inner_forward(x)
 		return out
 
 
@@ -417,12 +416,12 @@ class DeformBottleneckBlock(ResNetBlockBase):
 				shortcut = x
 
 			out += shortcut
+			out = F.silu(out, inplace = True)
 			return out
 		if self.with_cp and x.requires_grad:
 			out = cp.checkpoint(_inner_forward, x)
 		else:
 			out = _inner_forward(x)
-		out = F.relu_(out)
 		return out
 
 def make_stage(block_class, num_blocks, first_stride, *, in_channels, out_channels, **kwargs):
