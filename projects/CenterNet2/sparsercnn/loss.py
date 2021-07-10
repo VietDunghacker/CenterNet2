@@ -76,8 +76,8 @@ class SetCriterion(nn.Module):
 			pos_inds = torch.nonzero(target_classes != self.num_classes, as_tuple=True)[0]
 			pos_classes = target_classes[pos_inds]
 
-			src_boxes = src_boxes.flatten(0, 1)
-			target_boxes = target_boxes.flatten(0, 1)
+			#src_boxes = src_boxes.flatten(0, 1)
+			#target_boxes = target_boxes.flatten(0, 1)
 			pos_src_boxes = src_boxes[pos_inds]
 			pos_target_boxes = target_boxes[pos_inds]
 			logger.info(str(src_logits.shape))
