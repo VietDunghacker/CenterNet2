@@ -50,7 +50,12 @@ def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduc
 	else:
 		focal_weight = (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
 	loss = F.binary_cross_entropy_with_logits(pred, target, reduction='none') * focal_weight
-	return loss.sum()
+	if reduction == 'sum':
+		return loss.sum()
+	elif reduction == 'mean':
+		return loss.mean()
+	else:
+		return loss
 
 
 class SetCriterion(nn.Module):
@@ -117,16 +122,13 @@ class SetCriterion(nn.Module):
 			pos_target_boxes = target_boxes[pos_inds]
 
 			pos_ious = torch.diagonal(torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes)).clamp(min = 1e-6).detach()
-			logger.info(str(pos_ious))
 
 			labels = torch.zeros_like(src_logits)
 			labels[pos_inds, pos_classes] = pos_ious
-			logger.info(str(labels[torch.nonzero(labels, as_tuple = True)[0]]))
+
 			# comp focal loss.
-			class_loss = varifocal_loss(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", ) / num_boxes
-			logger.info(class_loss)
-			assert(1 == 0)
-			losses = {'varifocal_loss': class_loss}
+			vf_loss = varifocal_loss(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", ) / num_boxes
+			losses = {'varifocal_loss': vf_loss}
 		else:
 			loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
 			losses = {'loss_ce': loss_ce}
