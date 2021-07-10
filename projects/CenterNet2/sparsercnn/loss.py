@@ -23,15 +23,13 @@ import logging
 
 logger = logging.getLogger("detectron2")
 
-def varifocal_loss(pred, target, weight=None, alpha=0.75, gamma=2.0, iou_weighted=True, reduction='mean', avg_factor=None):
+def varifocal_loss(pred, target, alpha=0.75, gamma=2.0, iou_weighted=True, reduction='mean'):
 	"""`Varifocal Loss <https://arxiv.org/abs/2008.13367>`_
 	Args:
 		pred (torch.Tensor): The prediction with shape (N, C), C is the
 			number of classes
 		target (torch.Tensor): The learning target of the iou-aware
 			classification score with shape (N,).
-		weight (torch.Tensor, optional): The weight of loss for each
-			prediction. Defaults to None.
 		alpha (float, optional): A balance factor for the negative part of
 			Varifocal Loss, which is different from the alpha of Focal Loss.
 			Defaults to 0.75.
@@ -42,8 +40,6 @@ def varifocal_loss(pred, target, weight=None, alpha=0.75, gamma=2.0, iou_weighte
 		reduction (str, optional): The method used to reduce the loss into
 			a scalar. Defaults to 'mean'. Options are "none", "mean" and
 			"sum".
-		avg_factor (int, optional): Average factor that is used to average
-			the loss. Defaults to None.
 	"""
 	# pred and target should be of the same size
 	target = F.one_hot(target)
@@ -51,16 +47,10 @@ def varifocal_loss(pred, target, weight=None, alpha=0.75, gamma=2.0, iou_weighte
 	pred_sigmoid = pred.sigmoid()
 	target = target.type_as(pred)
 	if iou_weighted:
-		focal_weight = target * (target > 0.0).float() + \
-			alpha * (pred_sigmoid - target).abs().pow(gamma) * \
-			(target <= 0.0).float()
+		focal_weight = target * (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
 	else:
-		focal_weight = (target > 0.0).float() + \
-			alpha * (pred_sigmoid - target).abs().pow(gamma) * \
-			(target <= 0.0).float()
-	loss = F.binary_cross_entropy_with_logits(
-		pred, target, reduction='none') * focal_weight
-	loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
+		focal_weight = (target > 0.0).float() + alpha * (pred_sigmoid - target).abs().pow(gamma) * (target <= 0.0).float()
+	loss = F.binary_cross_entropy_with_logits(pred, target, reduction='none') * focal_weight
 	return loss
 
 
@@ -132,7 +122,7 @@ class SetCriterion(nn.Module):
 			
 			labels = torch.zeros_like(src_logits)
 			labels[pos_inds, pos_classes] = pos_ious
-			logger.info(str(labels))
+			logger.info(str(labels[:100]))
 			assert(1 == 0)
 			# comp focal loss.
 			class_loss = sigmoid_focal_loss_jit(src_logits, labels, alpha=self.focal_loss_alpha, gamma=self.focal_loss_gamma, reduction="sum", ) / num_boxes
