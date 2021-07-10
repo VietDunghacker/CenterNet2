@@ -318,7 +318,8 @@ class DeformBottleneckBlock(ResNetBlockBase):
 		  self.nums = 1
 		else:
 		  self.nums = scale -1
-		if self.in_channels!=self.out_channels and stride_3x3!=2:
+
+		if self.in_channels != self.out_channels and stride_3x3 !=2:
 			self.pool = nn.AvgPool2d(kernel_size=3, stride = stride_3x3, padding=1)
 
 		if deform_modulated:
