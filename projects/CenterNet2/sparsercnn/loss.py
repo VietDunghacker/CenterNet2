@@ -82,11 +82,11 @@ class SetCriterion(nn.Module):
 			logger.info(str(pos_src_boxes))			
 			logger.info(str(pos_target_boxes))
 
-			pos_ious = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes).clamp(min = 1e-6).detach()
-			logger.info(str(iou_targets))
+			#pos_ious = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes).clamp(min = 1e-6).detach()
+			#logger.info(str(pos_ious))
 			
 			labels = torch.zeros_like(src_logits)
-			labels[pos_inds, pos_classes] = iou_targets
+			labels[pos_inds, pos_classes] = 1
 			# comp focal loss.
 			class_loss = sigmoid_focal_loss_jit(
 				src_logits,
