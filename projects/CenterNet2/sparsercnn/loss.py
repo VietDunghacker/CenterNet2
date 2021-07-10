@@ -7,6 +7,7 @@
 SparseRCNN model and criterion classes.
 """
 import torch
+import torchvision
 import torch.nn.functional as F
 from torch import nn
 from fvcore.nn import sigmoid_focal_loss_jit
@@ -18,7 +19,9 @@ from .util.misc import (NestedTensor, nested_tensor_from_tensor_list,
 from .util.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
 
 from scipy.optimize import linear_sum_assignment
+import logging
 
+logger = logging.getLogger("detectron2")
 
 class SetCriterion(nn.Module):
 	""" This class computes the loss for SparseRCNN.
@@ -60,17 +63,30 @@ class SetCriterion(nn.Module):
 
 		idx = self._get_src_permutation_idx(indices)
 		target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
-		target_classes = torch.full(src_logits.shape[:2], self.num_classes,
-									dtype=torch.int64, device=src_logits.device)
+		target_classes = torch.full(src_logits.shape[:2], self.num_classes, dtype=torch.int64, device=src_logits.device)
 		target_classes[idx] = target_classes_o
+
+		src_boxes = outputs['pred_boxes'][idx]
+		target_boxes = torch.cat([t['boxes_xyxy'][i] for t, (_, i) in zip(targets, indices)], dim=0)
 
 		if self.use_focal:
 			src_logits = src_logits.flatten(0, 1)
 			# prepare one_hot target.
 			target_classes = target_classes.flatten(0, 1)
 			pos_inds = torch.nonzero(target_classes != self.num_classes, as_tuple=True)[0]
+			pos_src_boxes = src_boxes[pos_inds]
+			pos_target_boxes = target_boxes[pos_inds]
+			pos_classes = target_classes[pos_inds]
+			logger.info(str(src_logits.shape))
+			logger.info(str(pos_classes.shape))
+			logger.info(str(pos_src_boxes.shape))			
+			logger.info(str(pos_target_boxes.shape))
+
+			iou_targets = torchvision.ops.box_iou(pos_src_boxes, pos_target_boxes.detach()).clamp(min = 1e-6)
+			logger.info(str(iou_targets))
+			
 			labels = torch.zeros_like(src_logits)
-			labels[pos_inds, target_classes[pos_inds]] = 1
+			labels[pos_inds, pos_classes] = iou_targets
 			# comp focal loss.
 			class_loss = sigmoid_focal_loss_jit(
 				src_logits,
