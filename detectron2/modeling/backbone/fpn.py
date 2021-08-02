@@ -4,7 +4,6 @@ import fvcore.nn.weight_init as weight_init
 import torch
 import torch.nn.functional as F
 from torch import nn
-import logging
 
 from detectron2.layers import Conv2d, ShapeSpec, get_norm
 
@@ -13,7 +12,6 @@ from .build import BACKBONE_REGISTRY
 from .resnet import build_resnet_backbone
 
 __all__ = ["build_resnet_fpn_backbone", "build_retinanet_resnet_fpn_backbone", "FPN"]
-logger = logging.getLogger("detectron2")
 
 
 class FPN(Backbone):
@@ -95,7 +93,6 @@ class FPN(Backbone):
 		self.bottom_up = bottom_up
 		# Return feature names are "p<stage>", like ["p2", "p3", ..., "p6"]
 		self._out_feature_strides = {"p{}".format(int(math.log2(s))): s for s in strides}
-		logger.info(self._out_feature_strides)
 		# top block output feature maps.
 		if self.top_block is not None:
 			for s in range(stage, stage + self.top_block.num_levels):
