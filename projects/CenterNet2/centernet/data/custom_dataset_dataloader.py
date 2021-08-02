@@ -108,7 +108,7 @@ class ClassAwareSampler(Sampler):
 		category_freq = defaultdict(int)
 		self.cw = []
 		self.empty_gt = set()
-		for dataset_dict in dataset_dicts:  # For each image (without repeats)
+		for idx, dataset_dict in enumerate(dataset_dicts):  # For each image (without repeats)
 			cat_ids = {ann["category_id"] for ann in dataset_dict["annotations"]}
 			if len(cat_ids) == 0:
 				self.empty_gt.add(idx)
