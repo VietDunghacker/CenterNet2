@@ -27,7 +27,7 @@ import detectron2.utils.comm as comm
 from detectron2.utils.events import CommonMetricPrinter, EventStorage, JSONWriter, TensorboardXWriter
 from detectron2.utils.logger import setup_logger
 
-from onenet import add_onenet_config
+from centernet import add_centernet_config
 from centernet.data.custom_build_augmentation import build_custom_augmentation
 
 from fvcore.common.timer import Timer
@@ -234,8 +234,8 @@ def setup(args):
 	Create configs and perform basic setups.
 	"""
 	cfg = get_cfg()
-	add_onenet_config(cfg)
-	cfg.merge_from_file("/content/CenterNet2/projects/CenterNet2/configs/onenet.yaml")
+	add_centernet_config(cfg)
+	cfg.merge_from_file("/content/CenterNet2/projects/CenterNet2/configs/config.yaml")
 	cfg.DATASETS.TRAIN = ("celebrity_train",)
 	cfg.DATASETS.TEST = ("celebrity_valid",)
 	cfg.freeze()
