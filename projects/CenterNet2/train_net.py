@@ -27,7 +27,7 @@ import detectron2.utils.comm as comm
 from detectron2.utils.events import CommonMetricPrinter, EventStorage, JSONWriter, TensorboardXWriter
 from detectron2.utils.logger import setup_logger
 
-from centernet import add_centernet_config
+from centernet.config import add_centernet_config
 from centernet.data.custom_build_augmentation import build_custom_augmentation
 
 from fvcore.common.timer import Timer
