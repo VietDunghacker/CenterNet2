@@ -97,7 +97,7 @@ class BasicBlock(CNNBlockBase):
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
-			out = F.silu(out)
+			out = F.relu(out)
 			out = self.conv2(out)
 
 			if self.shortcut is not None:
@@ -106,7 +106,7 @@ class BasicBlock(CNNBlockBase):
 				shortcut = x
 
 			out += shortcut
-			out = F.silu(out)
+			out = F.relu(out)
 			return out
 		if x.requires_grad:
 			out = checkpoint.checkpoint(_inner_forward, x)
@@ -240,7 +240,7 @@ class BottleneckBlock(CNNBlockBase):
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
-			out = F.silu(out)
+			out = F.relu(out)
 
 			spx = torch.split(out, self.width, 1)
 			for i in range(self.nums):
@@ -249,7 +249,7 @@ class BottleneckBlock(CNNBlockBase):
 				else:
 					sp = sp + spx[i]
 				sp = self.convs[i](sp)
-				sp = F.silu(self.bns[i](sp))
+				sp = F.relu(self.bns[i](sp))
 				if i==0:
 					out = sp
 				else:
@@ -267,7 +267,7 @@ class BottleneckBlock(CNNBlockBase):
 				shortcut = x
 
 			out += shortcut
-			out = F.silu(out)
+			out = F.relu(out)
 			return out
 		if x.requires_grad:
 			out = checkpoint.checkpoint(_inner_forward, x)
@@ -442,7 +442,7 @@ class DeformBottleneckBlock(ResNetBlockBase):
 	def forward(self, x):
 		def _inner_forward(x):
 			out = self.conv1(x)
-			out = F.silu(out)
+			out = F.relu(out)
 
 			spx = torch.split(out, self.width, 1)
 			for i in range(self.nums):
@@ -461,7 +461,7 @@ class DeformBottleneckBlock(ResNetBlockBase):
 				else:
 					offset = self.conv2_offsets[i](sp)
 					sp = self.convs[i](sp, offset)
-				sp = F.silu(self.bns[i](sp))
+				sp = F.relu(self.bns[i](sp))
 				if i==0:
 					out = sp
 				else:
@@ -479,7 +479,7 @@ class DeformBottleneckBlock(ResNetBlockBase):
 				shortcut = x
 
 			out += shortcut
-			out = F.silu(out)
+			out = F.relu(out)
 			return out
 		if x.requires_grad:
 			out = checkpoint.checkpoint(_inner_forward, x)
@@ -568,7 +568,7 @@ class BasicStem(CNNBlockBase):
 	def forward(self, x):
 		x = self.conv1(x)
 		x = self.bn1(x)
-		x = F.silu(x)
+		x = F.relu(x)
 		x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1)
 		return x
 
