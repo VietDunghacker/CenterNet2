@@ -8,6 +8,7 @@ MODEL:
     OUT_CHANNELS: 288
   WEIGHTS: "/gdrive/My Drive/data/r2_101.pkl"
   RESNETS:
+    SCALE: 4
     DEPTH: 101
     WIDTH_PER_GROUP: 26
     DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
