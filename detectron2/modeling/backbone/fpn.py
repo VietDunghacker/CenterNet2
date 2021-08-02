@@ -93,6 +93,7 @@ class FPN(Backbone):
 		self.bottom_up = bottom_up
 		# Return feature names are "p<stage>", like ["p2", "p3", ..., "p6"]
 		self._out_feature_strides = {"p{}".format(int(math.log2(s))): s for s in strides}
+		print(self._out_feature_strides)
 		# top block output feature maps.
 		if self.top_block is not None:
 			for s in range(stage, stage + self.top_block.num_levels):
