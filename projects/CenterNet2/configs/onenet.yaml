@@ -1,6 +1,8 @@
 _BASE_: "Base-OneNet.yaml"
 MODEL:
   META_ARCHITECTURE: "OneNet"
+  BACKBONE:
+    NAME: "build_resnet_fpn_backbone"
   WEIGHTS: "/gdrive/My Drive/data/r2_101.pkl"
   RESNETS:
     SCALE: 4

@@ -114,7 +114,6 @@ class OneNet(nn.Module):
 
 		# Feature Extraction.
 		src = self.backbone(images.tensor)
-		logger.info(src.keys())
 		features = list()
 		for f in self.in_features:
 			feature = src[f]
