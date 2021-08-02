@@ -27,6 +27,7 @@ from collections import defaultdict
 from typing import Optional
 
 # from .custom_build_augmentation import build_custom_augmentation
+logger = logging.getLogger("detectron2")
 
 def build_custom_train_loader(cfg, mapper=None):
 	"""
@@ -116,6 +117,7 @@ class ClassAwareSampler(Sampler):
 			for cat_id in cat_ids:
 				category_freq[cat_id] += 1
 		self.empty_gt = list(self.empty_gt)
+		logger.info("Empty groundtruth: {} images.".format(len(self.empty_gt)))
 		for i in sorted(category_freq.keys()):
 			self.cw.append(1. / category_freq[i])
 		self.cw = np.array(self.cw)
