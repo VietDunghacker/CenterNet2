@@ -1,11 +1,6 @@
 _BASE_: "Base-OneNet.yaml"
 MODEL:
   META_ARCHITECTURE: "OneNet"
-  BACKBONE:
-    NAME: "build_res2net_bifpn_backbone"
-  BIFPN:
-    NUM_BIFPN: 7
-    OUT_CHANNELS: 288
   WEIGHTS: "/gdrive/My Drive/data/r2_101.pkl"
   RESNETS:
     SCALE: 4
