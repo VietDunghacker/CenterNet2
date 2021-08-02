@@ -110,6 +110,8 @@ class BasicBlock(CNNBlockBase):
 			return out
 		if x.requires_grad:
 			out = checkpoint.checkpoint(_inner_forward, x)
+		else:
+			out = _inner_forward(x)
 		return out
 
 
@@ -269,6 +271,8 @@ class BottleneckBlock(CNNBlockBase):
 			return out
 		if x.requires_grad:
 			out = checkpoint.checkpoint(_inner_forward, x)
+		else:
+			out = _inner_forward(x)
 		return out
 
 
@@ -479,6 +483,8 @@ class DeformBottleneckBlock(ResNetBlockBase):
 			return out
 		if x.requires_grad:
 			out = checkpoint.checkpoint(_inner_forward, x)
+		else:
+			out = _inner_forward(x)
 		return out
 
 
