@@ -11,6 +11,13 @@ def add_onenet_config(cfg):
     """
     Add config for OneNet.
     """
+    cfg.MODEL.BIFPN = CN()
+    cfg.MODEL.BIFPN.NUM_LEVELS = 5
+    cfg.MODEL.BIFPN.NUM_BIFPN = 6
+    cfg.MODEL.BIFPN.NORM = 'GN'
+    cfg.MODEL.BIFPN.OUT_CHANNELS = 160
+    cfg.MODEL.BIFPN.SEPARABLE_CONV = False
+
     cfg.MODEL.OneNet = CN()
     cfg.MODEL.OneNet.NUM_CLASSES = 80
     cfg.MODEL.OneNet.NMS = False  # for ablation
