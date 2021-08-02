@@ -5,6 +5,7 @@ import numpy as np
 import fvcore.nn.weight_init as weight_init
 import torch
 import torch.nn.functional as F
+import torch.utils.checkpoint as checkpoint
 from torch import nn
 
 from detectron2.layers import (
@@ -94,17 +95,21 @@ class BasicBlock(CNNBlockBase):
 				weight_init.c2_msra_fill(layer)
 
 	def forward(self, x):
-		out = self.conv1(x)
-		out = F.relu_(out)
-		out = self.conv2(out)
+		def _inner_forward(x):
+			out = self.conv1(x)
+			out = F.silu(out)
+			out = self.conv2(out)
 
-		if self.shortcut is not None:
-			shortcut = self.shortcut(x)
-		else:
-			shortcut = x
+			if self.shortcut is not None:
+				shortcut = self.shortcut(x)
+			else:
+				shortcut = x
 
-		out += shortcut
-		out = F.relu_(out)
+			out += shortcut
+			out = F.silu(out)
+			return out
+		if x.requires_grad:
+			out = checkpoint.checkpoint(_inner_forward, x)
 		return out
 
 
@@ -231,35 +236,39 @@ class BottleneckBlock(CNNBlockBase):
 		# Add it as an option when we need to use this code to train a backbone.
 
 	def forward(self, x):
-		out = self.conv1(x)
-		out = F.relu_(out)
+		def _inner_forward(x):
+			out = self.conv1(x)
+			out = F.silu(out)
 
-		spx = torch.split(out, self.width, 1)
-		for i in range(self.nums):
-			if i==0 or self.in_channels!=self.out_channels:
-				sp = spx[i]
+			spx = torch.split(out, self.width, 1)
+			for i in range(self.nums):
+				if i==0 or self.in_channels!=self.out_channels:
+					sp = spx[i]
+				else:
+					sp = sp + spx[i]
+				sp = self.convs[i](sp)
+				sp = F.silu(self.bns[i](sp))
+				if i==0:
+					out = sp
+				else:
+					out = torch.cat((out, sp), 1)
+			if self.scale!=1 and self.stride_3x3==1:
+				out = torch.cat((out, spx[self.nums]), 1)
+			elif self.scale != 1 and self.stride_3x3==2:
+				out = torch.cat((out, self.pool(spx[self.nums])), 1)
+
+			out = self.conv3(out)
+
+			if self.shortcut is not None:
+				shortcut = self.shortcut(x)
 			else:
-				sp = sp + spx[i]
-			sp = self.convs[i](sp)
-			sp = F.relu_(self.bns[i](sp))
-			if i==0:
-				out = sp
-			else:
-				out = torch.cat((out, sp), 1)
-		if self.scale!=1 and self.stride_3x3==1:
-			out = torch.cat((out, spx[self.nums]), 1)
-		elif self.scale != 1 and self.stride_3x3==2:
-			out = torch.cat((out, self.pool(spx[self.nums])), 1)
+				shortcut = x
 
-		out = self.conv3(out)
-
-		if self.shortcut is not None:
-			shortcut = self.shortcut(x)
-		else:
-			shortcut = x
-
-		out += shortcut
-		out = F.relu_(out)
+			out += shortcut
+			out = F.silu(out)
+			return out
+		if x.requires_grad:
+			out = checkpoint.checkpoint(_inner_forward, x)
 		return out
 
 
@@ -427,56 +436,49 @@ class DeformBottleneckBlock(ResNetBlockBase):
 				nn.init.constant_(layer.bias, 0)
 
 	def forward(self, x):
-		out = self.conv1(x)
-		out = F.relu_(out)
+		def _inner_forward(x):
+			out = self.conv1(x)
+			out = F.silu(out)
 
-		# if self.deform_modulated:
-		#	 offset_mask = self.conv2_offset(out)
-		#	 offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
-		#	 offset = torch.cat((offset_x, offset_y), dim=1)
-		#	 mask = mask.sigmoid()
-		#	 out = self.conv2(out, offset, mask)
-		# else:
-		#	 offset = self.conv2_offset(out)
-		#	 out = self.conv2(out, offset)
-		# out = F.relu_(out)
+			spx = torch.split(out, self.width, 1)
+			for i in range(self.nums):
+				if i==0 or self.in_channels!=self.out_channels:
+					sp = spx[i].contiguous()
+				else:
+					sp = sp + spx[i].contiguous()
+				
+				# sp = self.convs[i](sp)
+				if self.deform_modulated:
+					offset_mask = self.conv2_offsets[i](sp)
+					offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
+					offset = torch.cat((offset_x, offset_y), dim=1)
+					mask = mask.sigmoid()
+					sp = self.convs[i](sp, offset, mask)
+				else:
+					offset = self.conv2_offsets[i](sp)
+					sp = self.convs[i](sp, offset)
+				sp = F.silu(self.bns[i](sp))
+				if i==0:
+					out = sp
+				else:
+					out = torch.cat((out, sp), 1)
+			if self.scale!=1 and self.stride_3x3==1:
+				out = torch.cat((out, spx[self.nums]), 1)
+			elif self.scale != 1 and self.stride_3x3==2:
+				out = torch.cat((out, self.pool(spx[self.nums])), 1)
 
-		spx = torch.split(out, self.width, 1)
-		for i in range(self.nums):
-			if i==0 or self.in_channels!=self.out_channels:
-				sp = spx[i].contiguous()
+			out = self.conv3(out)
+
+			if self.shortcut is not None:
+				shortcut = self.shortcut(x)
 			else:
-				sp = sp + spx[i].contiguous()
-			
-			# sp = self.convs[i](sp)
-			if self.deform_modulated:
-				offset_mask = self.conv2_offsets[i](sp)
-				offset_x, offset_y, mask = torch.chunk(offset_mask, 3, dim=1)
-				offset = torch.cat((offset_x, offset_y), dim=1)
-				mask = mask.sigmoid()
-				sp = self.convs[i](sp, offset, mask)
-			else:
-				offset = self.conv2_offsets[i](sp)
-				sp = self.convs[i](sp, offset)
-			sp = F.relu_(self.bns[i](sp))
-			if i==0:
-				out = sp
-			else:
-				out = torch.cat((out, sp), 1)
-		if self.scale!=1 and self.stride_3x3==1:
-			out = torch.cat((out, spx[self.nums]), 1)
-		elif self.scale != 1 and self.stride_3x3==2:
-			out = torch.cat((out, self.pool(spx[self.nums])), 1)
+				shortcut = x
 
-		out = self.conv3(out)
-
-		if self.shortcut is not None:
-			shortcut = self.shortcut(x)
-		else:
-			shortcut = x
-
-		out += shortcut
-		out = F.relu_(out)
+			out += shortcut
+			out = F.silu(out)
+			return out
+		if x.requires_grad:
+			out = checkpoint.checkpoint(_inner_forward, x)
 		return out
 
 
@@ -560,7 +562,7 @@ class BasicStem(CNNBlockBase):
 	def forward(self, x):
 		x = self.conv1(x)
 		x = self.bn1(x)
-		x = F.relu_(x)
+		x = F.silu(x)
 		x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1)
 		return x
 

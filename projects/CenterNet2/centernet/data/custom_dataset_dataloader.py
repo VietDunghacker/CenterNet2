@@ -99,7 +99,7 @@ class ClassAwareSampler(Sampler):
 				among workers (require synchronization among all workers).
 		"""
 		self.dataset_dicts = dataset_dicts
-		self._size = cfg.SOLVER.IMS_PER_BATCH * 10
+		self._size = cfg.SOLVER.IMS_PER_BATCH
 		assert self._size > 0
 		
 		self._rank = comm.get_rank()
@@ -107,10 +107,14 @@ class ClassAwareSampler(Sampler):
 
 		category_freq = defaultdict(int)
 		self.cw = []
+		self.empty_gt = set()
 		for dataset_dict in dataset_dicts:  # For each image (without repeats)
 			cat_ids = {ann["category_id"] for ann in dataset_dict["annotations"]}
+			if len(cat_ids) == 0:
+				self.empty_gt.add(idx)
 			for cat_id in cat_ids:
 				category_freq[cat_id] += 1
+		self.empty_gt = list(self.empty_gt)
 		for i in sorted(category_freq.keys()):
 			self.cw.append(1. / category_freq[i])
 		self.cw = np.array(self.cw)
@@ -125,7 +129,13 @@ class ClassAwareSampler(Sampler):
 
 	def _infinite_indices(self):
 		while True:
-			ids = torch.multinomial(self.weights, self._size, replacement=True)
+			ids = torch.multinomial(self.weights, self._size * 9, replacement=True)
+			if len(self.empty_gt) > 0:
+				ids = ids.numpy().tolist()
+				random_negative_sample = random.choices(self.empty_gt, k = self._size)
+				ids.extend(random_negative_sample)
+				ids = np.random.permutation(ids)
+				ids = torch.tensor(ids)
 			yield from ids
 			self.weights = self._get_class_balance_factor(self.dataset_dicts)
 

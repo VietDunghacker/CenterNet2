@@ -1,0 +1,52 @@
+_BASE_: "Base-OneNet.yaml"
+MODEL:
+  META_ARCHITECTURE: "OneNet"
+  BACKBONE:
+    NAME: "build_res2net_bifpn_backbone"
+  BIFPN:
+    NUM_BIFPN: 7
+    OUT_CHANNELS: 288
+  WEIGHTS: "/gdrive/My Drive/data/r2_101.pkl"
+  RESNETS:
+    DEPTH: 101
+    WIDTH_PER_GROUP: 26
+    DEFORM_ON_PER_STAGE: [False, True, True, True] # on Res4, Res5
+    DEFORM_MODULATED: True
+    OUT_FEATURES: ["res3", "res4", "res5"]
+  FPN:
+    IN_FEATURES: ["res3", "res4", "res5"]
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD: [58.395, 57.120, 57.375]
+  OneNet:
+    NUM_CLASSES: 29
+    HEAD: "FCOS"
+    IN_FEATURES: ["p3", "p4", "p5", "p6", "p7"]
+TEST:
+  EVAL_PERIOD: 250
+  DETECTIONS_PER_IMAGE: 100
+SOLVER:
+  MAX_ITER: 30000
+  CHECKPOINT_PERIOD: 250
+  LR_SCHEDULER_NAME: "WarmupCosineLR"
+  BASE_LR: 0.00004
+  OPTIMIZER: "ADAMW"
+  IMS_PER_BATCH: 12
+  WARMUP_ITERS: 500
+  RESET_ITER: True
+  AMP:
+    ENABLED: True
+DATALOADER:
+  ASPECT_RATIO_GROUPING: False
+  NUM_WORKERS: 4
+  SAMPLER_TRAIN: "ClassAwareSampler"
+INPUT:
+  FORMAT: RGB
+  CUSTOM_AUG: EfficientDetResizeCrop
+  MAX_SIZE_TEST: 800
+  MAX_SIZE_TRAIN: 800
+  TRAIN_SIZE: 800
+  TEST_SIZE: 800
+  SCALE_RANGE: [0.9, 1]
+  TEST_INPUT_TYPE: 'square'
+OUTPUT_DIR: "/content/ckpt"
+VERSION: 2

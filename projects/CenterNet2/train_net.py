@@ -27,7 +27,7 @@ import detectron2.utils.comm as comm
 from detectron2.utils.events import CommonMetricPrinter, EventStorage, JSONWriter, TensorboardXWriter
 from detectron2.utils.logger import setup_logger
 
-from sparsercnn import SparseRCNNDatasetMapper, add_sparsercnn_config
+from onenet import add_onenet_config
 from centernet.data.custom_build_augmentation import build_custom_augmentation
 
 from fvcore.common.timer import Timer
@@ -59,11 +59,6 @@ classes = [
 
 logger = logging.getLogger("detectron2")
 
-'''class CustomMapper()
-	def __init__(self, is_train: bool, augmentations: List[Union[T.Augmentation, T.Transform]]):
-		self.is_train = is_train
-		self.augmentations = T.AugmentationList(augmentations)'''
-
 def get_celebrity_dicts(csv_path):
 	data_csv = pd.read_csv(csv_path)
 	image_id_list = data_csv.image_id.unique()
@@ -78,6 +73,8 @@ def get_celebrity_dicts(csv_path):
 
 		objs = []
 		for idx, row in df.iterrows():
+			if row["class_id"] == -1:
+				continue
 			x_min, y_min, x_max, y_max = row["x_min"], row["y_min"], row["x_max"], row["y_max"]
 
 			obj = {
@@ -230,8 +227,8 @@ def setup(args):
 	Create configs and perform basic setups.
 	"""
 	cfg = get_cfg()
-	add_sparsercnn_config(cfg)
-	cfg.merge_from_file("/content/CenterNet2/projects/CenterNet2/configs/sparse.yaml")
+	add_onenet_config(cfg)
+	cfg.merge_from_file("/content/CenterNet2/projects/CenterNet2/configs/onenet.yaml")
 	cfg.DATASETS.TRAIN = ("celebrity_train",)
 	cfg.DATASETS.TEST = ("celebrity_valid",)
 	cfg.freeze()
